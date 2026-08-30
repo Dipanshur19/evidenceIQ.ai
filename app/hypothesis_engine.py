@@ -261,15 +261,16 @@ def generate_hypotheses(anomaly: dict):
             data_quality_penalty=data_quality_penalty,
         )
 
+        event_id = ev_attrs.get("id") or event_node.get("id") or "event:unknown"
         hyp_id = (
-            f"hypothesis:{ev_attrs['id'].split(':')[-1]}_caused_{kpi_id.split(':')[-1]}"
+            f"hypothesis:{event_id.split(':')[-1]}_caused_{kpi_id.split(':')[-1]}"
         )
         hyp_attrs = {
             "node_type": "Hypothesis",
             "id": hyp_id,
-            "statement": f"{ev_attrs['description']} is associated with the observed KPI change.",
+            "statement": f"{ev_attrs.get('description', 'Operational Event')} is associated with the observed KPI change.",
             "related_kpi": kpi_id,
-            "related_event": ev_attrs["id"],
+            "related_event": event_id,
             "evidence_score": scoring["evidence_score"],
             "confidence_band": scoring["confidence_band"],
             "scoring_breakdown": scoring["breakdown"],

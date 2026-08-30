@@ -14,6 +14,7 @@ import {
   Activity,
   ArrowRight,
   ChevronDown,
+  Database,
 } from "lucide-react";
 
 import { ToastProvider } from "./components/ToastContext";
@@ -26,6 +27,7 @@ import DecisionMemoryPage from "./pages/DecisionMemoryPage";
 import Contracts from "./pages/Contracts";
 import Architecture from "./pages/Architecture";
 import Proposal from "./pages/Proposal";
+import ConnectorsPage from "./pages/ConnectorsPage";
 
 const socket = io("http://localhost:3001");
 
@@ -35,6 +37,7 @@ const PAGE_TITLES = {
   investigation:"Investigation Engine — EvidenceIQ.ai",
   scanner:      "Anomaly Scanner — EvidenceIQ.ai",
   graph:        "Evidence Graph — EvidenceIQ.ai",
+  connectors:   "Enterprise Connectors — EvidenceIQ.ai",
   contracts:    "Semantic Contracts — EvidenceIQ.ai",
   memory:       "Decision Memory — EvidenceIQ.ai",
   architecture: "Architecture — EvidenceIQ.ai",
@@ -81,6 +84,7 @@ export default function App() {
     { id: "investigation", label: "Investigation",  icon: Search    },
     { id: "scanner",       label: "Scanner",        icon: Radar     },
     { id: "graph",         label: "Evidence Graph",  icon: Network   },
+    { id: "connectors",    label: "Connectors Hub", icon: Database  },
   ];
 
   const moreNav = [
@@ -391,6 +395,11 @@ export default function App() {
             {currentPage === "graph" && (
               <motion.div key="graph" variants={pageVariants} initial="initial" animate="animate" exit="exit">
                 <EvidenceGraphPage />
+              </motion.div>
+            )}
+            {currentPage === "connectors" && (
+              <motion.div key="connectors" variants={pageVariants} initial="initial" animate="animate" exit="exit">
+                <ConnectorsPage />
               </motion.div>
             )}
             {currentPage === "contracts" && (

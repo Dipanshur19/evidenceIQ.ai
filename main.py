@@ -25,7 +25,7 @@ app = FastAPI(
     title="EvidenceIQ.ai",
     description="BusinessIntelligence.ai prototype - graph-first evidence engine "
     "for KPI root-cause investigation with grounded Gemini narration.",
-    version="0.1.0",
+    version="0.2.0",
 )
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
@@ -36,7 +36,7 @@ db.init_db()
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "EvidenceIQ FastAPI Engine"}
+    return {"status": "ok", "service": "EvidenceIQ FastAPI Engine", "version": "0.2.0"}
 
 
 @app.get("/analytics/meta")
@@ -231,6 +231,9 @@ def get_anomaly_heatmap(as_of_date: str = "2026-08-15"):
 
 @app.get("/graph/data")
 def get_graph_data(node_types: Optional[str] = None, min_confidence: float = 0.0):
+    from app import graph_builder
+    graph_builder.ensure_complete_graph_topology()
+
     type_list = (
         node_types.split(",")
         if node_types
@@ -249,10 +252,23 @@ def get_graph_data(node_types: Optional[str] = None, min_confidence: float = 0.0
                     parsed_attrs = {}
             elif isinstance(n.get("attrs"), dict):
                 parsed_attrs = n["attrs"]
+            
+            label = (
+                parsed_attrs.get("display_name")
+                or parsed_attrs.get("name")
+                or parsed_attrs.get("statement")
+                or parsed_attrs.get("summary")
+                or parsed_attrs.get("description")
+                or parsed_attrs.get("action")
+                or n["id"]
+            )
+
             all_nodes.append(
                 {
                     "id": n["id"],
                     "node_type": nt,
+                    "type": nt,
+                    "label": label,
                     "attrs": parsed_attrs,
                     "created_at": n.get("created_at"),
                     "version": n.get("version", 1),
@@ -261,7 +277,19 @@ def get_graph_data(node_types: Optional[str] = None, min_confidence: float = 0.0
 
     with db.get_conn() as conn:
         raw_edges = [
-            dict(r)
+            {
+                "id": r["id"],
+                "edge_type": r["edge_type"],
+                "relationship": r["edge_type"],
+                "from_id": r["from_id"],
+                "to_id": r["to_id"],
+                "source": r["from_id"],
+                "target": r["to_id"],
+                "confidence": r["confidence"],
+                "methodology": r["methodology"],
+                "provenance": r["provenance"],
+                "created_at": r["created_at"],
+            }
             for r in conn.execute(
                 "SELECT * FROM graph_edge WHERE confidence >= ? ORDER BY id DESC LIMIT 400",
                 (min_confidence,),
@@ -271,6 +299,7 @@ def get_graph_data(node_types: Optional[str] = None, min_confidence: float = 0.0
     return {
         "nodes": all_nodes,
         "edges": raw_edges,
+        "links": raw_edges,
         "node_counts": {
             nt: sum(1 for n in all_nodes if n["node_type"] == nt) for nt in type_list
         },
@@ -286,7 +315,7 @@ def investigate(req: InvestigateRequest):
 
 
 @app.get("/analytics/scan")
-def scan(as_of_date: str):
+def scan(as_of_date: str = "2026-08-15"):
     return {"anomalies": orchestrator.scan_and_list_anomalies(as_of_date)}
 
 
@@ -393,6 +422,8 @@ def get_parameters_inspected(
     as_of_date: str = "2026-08-15",
 ):
     """Returns the multi-parameter diagnostic breakdown inspected across data dimensions."""
+    from app import hypothesis_engine
+
     res = anomaly_detection.detect_anomaly(
         {"region": region, "channel": channel}, as_of_date
     )
@@ -643,6 +674,291 @@ def verify_briefing_hash(req: dict):
         "computed_hash": briefing_exporter.calculate_decision_hash(decision_payload),
         "expected_hash": expected_hash,
     }
+
+
+# ============================================================================
+# Round 2 New Endpoints
+# ============================================================================
+
+@app.get("/semantic-contracts")
+def get_semantic_contracts():
+    """Serve the governed YAML semantic contracts (single source of truth)."""
+    contracts = config.get_raw_yaml_contracts()
+    return {
+        "version": contracts.get("version", 1),
+        "owner": contracts.get("owner", "EvidenceIQ Platform Team"),
+        "last_updated": contracts.get("last_updated", ""),
+        "metrics": contracts.get("metrics", {}),
+        "dimensions": contracts.get("dimensions", {}),
+        "action_risk_table": contracts.get("action_risk_table", {}),
+        "confidence_bands": contracts.get("confidence_bands", {}),
+        "evidence_weights": contracts.get("evidence_weights", {}),
+        "roles": contracts.get("roles", {}),
+    }
+
+
+@app.get("/cold-start-forecast")
+def get_cold_start_forecast(
+    region: str = "Region_A",
+    channel: str = "StoreType_A",
+    as_of_date: str = "2026-08-15",
+):
+    """Cold-start forecasting for sparse-history KPIs using shrinkage estimation."""
+    from app import cold_start_forecast
+    result = cold_start_forecast.shrinkage_forecast(
+        {"region": region, "channel": channel}, as_of_date
+    )
+    return result
+
+
+@app.get("/shapley-attribution")
+def get_shapley_attribution(
+    window_from: str = "2026-08-01",
+    window_to: str = "2026-08-15",
+):
+    """Shapley value attribution for fair driver credit-split."""
+    from app import driver_analysis
+    result = driver_analysis.shapley_attribution(window_from, window_to)
+    return result
+
+
+@app.post("/feedback")
+def submit_feedback(req: dict):
+    """Capture analyst/business-user feedback on a decision/recommendation."""
+    from app import feedback_loop
+    result = feedback_loop.capture_feedback(
+        decision_id=req.get("decision_id", "decision_unknown"),
+        feedback_type=req.get("feedback_type", "confirm"),  # confirm/reject/modify
+        feedback_by=req.get("feedback_by", "analyst"),
+        feedback_detail=req.get("feedback_detail", ""),
+        corrected_hypothesis_id=req.get("corrected_hypothesis_id"),
+        corrected_driver=req.get("corrected_driver"),
+    )
+    return result
+
+
+@app.post("/feedback/validate")
+def validate_feedback(req: dict):
+    """Validate a feedback record before integration."""
+    from app import feedback_loop
+    return feedback_loop.validate_feedback(req.get("feedback_id", ""))
+
+
+@app.post("/feedback/compute-adjustments")
+def compute_feedback_adjustments():
+    """Compute bounded weight adjustments from validated feedback (batch cadence)."""
+    from app import feedback_loop
+    return feedback_loop.compute_weight_adjustments()
+
+
+@app.get("/feedback/summary")
+def get_feedback_summary():
+    """Returns feedback summary with learning metrics."""
+    from app import feedback_loop
+    return feedback_loop.get_feedback_summary()
+
+
+@app.get("/auth/roles")
+def list_roles():
+    """List all RBAC role definitions."""
+    from app import rbac
+    return {
+        "roles": rbac.list_roles(),
+        "users": rbac.list_users(),
+    }
+
+
+@app.get("/auth/user-profile")
+def get_user_profile(user_id: str = "analyst@evidenceiq.ai"):
+    """Get user profile with role and access level."""
+    from app import rbac
+    return rbac.get_user_profile(user_id)
+
+
+@app.post("/auth/check-action")
+def check_action_authorization(req: dict):
+    """Check if a user is authorized to approve a given action."""
+    from app import rbac
+    return rbac.check_action_authorization(
+        user_id=req.get("user_id", "analyst@evidenceiq.ai"),
+        action_category=req.get("action_category", "rollback_release"),
+    )
+
+
+@app.get("/telemetry/summary")
+def get_telemetry_summary():
+    """Returns aggregate telemetry: cost-per-insight, cache hit rate, model tier distribution."""
+    from app import telemetry
+    return telemetry.get_telemetry_summary()
+
+
+@app.get("/pipeline-stages")
+def get_pipeline_stages():
+    """Returns all pipeline stages with their method types and justifications."""
+    return {
+        "pipeline_stages": [
+            {
+                "stage": "1. Data Ingestion & Reconciliation",
+                "method_type": "deterministic_etl",
+                "justification": "Structured ETL from CSV sources with standardized grain and calendar. Source freshness tracked per observation.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "2. Semantic Contract Governance",
+                "method_type": "deterministic_business_rules",
+                "justification": "YAML-defined metric definitions, formulas, dimensions, lineage, and access restrictions. Single source of truth.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "3. Anomaly Detection",
+                "method_type": "statistics_zscore + statistics_cusum",
+                "justification": "Z-score for point anomalies, CUSUM for slow-bleed change-points. Two-gate materiality function requires both statistical significance AND business impact.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "4. Cold-Start Forecasting",
+                "method_type": "statistics_shrinkage_estimation",
+                "justification": "James-Stein style shrinkage: borrow from similar KPI group, blend with own data using weight that shifts as observations accumulate.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "5. Driver Analysis & Attribution",
+                "method_type": "statistics_shapley_values + statistics_contribution_decomposition",
+                "justification": "Shapley values for fair credit-split across interacting drivers. Counterfactual decomposition for dimensional attribution.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "6. Quasi-Causal Testing",
+                "method_type": "statistics_difference_in_differences",
+                "justification": "DiD compares treated vs control group changes when natural experiment exists. Parallel-trends assumption stated explicitly.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "7. Evidence Scoring",
+                "method_type": "statistics_evidence_scoring",
+                "justification": "6-factor weighted scoring: correlation, temporal alignment, independent corroboration, quasi-causal DiD, minus contradiction and data quality penalties.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "8. Unstructured Evidence Retrieval",
+                "method_type": "ml_tfidf_cosine_similarity",
+                "justification": "TF-IDF vectorization + cosine similarity for topic-relevant ticket extraction. Traditional ML, not LLM.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "9. Abstention & Uncertainty",
+                "method_type": "deterministic_abstention_logic",
+                "justification": "Retrieval-aware refusal: abstains when evidence contradicts, score below threshold, or single-source only. Outputs what's missing and how to resolve.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "10. Persona-Specific Narration",
+                "method_type": "llm_narration (or deterministic_template_fallback)",
+                "justification": "LLM narrates the pre-computed, fixed evidence package differently per persona. Role: language synthesis only, NOT arithmetic or causal claims.",
+                "llm_involved": True,
+            },
+            {
+                "stage": "11. Recommendation",
+                "method_type": "deterministic_business_rules",
+                "justification": "7-part schema (driver→lever→action→impact→owner→confidence→monitoring). Governed by action-risk table with decision rights.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "12. Human Checkpoint",
+                "method_type": "deterministic_business_rules",
+                "justification": "All recommendations route to human review. High-risk/irreversible actions always require executive sign-off.",
+                "llm_involved": False,
+            },
+            {
+                "stage": "13. Feedback Loop",
+                "method_type": "statistics_weight_adjustment",
+                "justification": "Bounded, audited, reversible weight adjustments from human-confirmed outcomes. Batch cadence, not continuous online learning.",
+                "llm_involved": False,
+            },
+        ],
+        "llm_stages_count": 1,
+        "non_llm_stages_count": 12,
+        "note": "The LLM is NOT the source of quantitative truth. Every number traces back to a non-LLM computation. The LLM's role is confined to synthesis and language.",
+    }
+
+
+# ============================================================================
+# Phase 2: Enterprise Connectors, Webhooks & Database Scaling
+# ============================================================================
+
+from app.connectors.registry import connector_registry
+from app.webhooks.webhook_engine import webhook_engine
+from app.db_adapters.db_manager import db_scaling_manager
+from app.multitenancy import tenant_manager
+
+
+@app.get("/connectors/list")
+def list_enterprise_connectors():
+    """Returns all registered enterprise data warehouse connectors."""
+    return {"connectors": connector_registry.list_connectors()}
+
+
+@app.post("/connectors/test")
+def test_enterprise_connector(req: dict):
+    """Tests connectivity to a specific enterprise connector (Snowflake, BigQuery, Databricks, SAP HANA)."""
+    connector_id = req.get("connector_id", "connector_snowflake_prod")
+    return connector_registry.test_connector(connector_id)
+
+
+@app.get("/connectors/introspect")
+def introspect_connector_schema(connector_id: str = "connector_snowflake_prod"):
+    """Introspects tables, views, and metrics in the connected warehouse."""
+    return connector_registry.introspect_connector(connector_id)
+
+
+@app.post("/webhooks/github")
+def receive_github_webhook(payload: dict):
+    """Ingests real-time GitHub Actions deployment and release webhooks."""
+    return webhook_engine.ingest_github_event(payload)
+
+
+@app.post("/webhooks/jira")
+def receive_jira_webhook(payload: dict):
+    """Ingests real-time Jira incident, release, and change request webhooks."""
+    return webhook_engine.ingest_jira_event(payload)
+
+
+@app.post("/webhooks/zendesk")
+def receive_zendesk_webhook(payload: dict):
+    """Ingests real-time Zendesk support ticket surges and urgent customer issues."""
+    return webhook_engine.ingest_zendesk_event(payload)
+
+
+@app.get("/webhooks/history")
+def get_webhook_history(limit: int = 20):
+    """Returns audit history of all ingested real-time webhook events."""
+    return {"history": webhook_engine.get_history(limit)}
+
+
+@app.get("/db-adapters/status")
+def get_db_adapters_status():
+    """Returns status and latency benchmarks of database scaling adapters."""
+    return db_scaling_manager.get_status()
+
+
+@app.post("/db-adapters/switch")
+def switch_db_adapter(req: dict):
+    """Switches active database engine between SQLite, PostgreSQL+pgvector, and Neo4j."""
+    engine_id = req.get("engine_id", "sqlite_embedded")
+    return db_scaling_manager.switch_engine(engine_id)
+
+
+@app.get("/tenants")
+def list_tenants():
+    """Returns multi-tenant workspaces and SSO integration configuration."""
+    return {"tenants": tenant_manager.list_tenants()}
+
+
+@app.post("/auth/sso-session")
+def parse_sso_session(req: dict):
+    """Parses SAML 2.0 / OIDC identity token and establishes tenant-isolated session."""
+    token = req.get("token", "mock_saml_token")
+    return tenant_manager.parse_sso_claims(token)
 
 
 if __name__ == "__main__":

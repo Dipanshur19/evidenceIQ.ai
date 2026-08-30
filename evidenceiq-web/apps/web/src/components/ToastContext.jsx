@@ -5,11 +5,23 @@ const ToastContext = createContext(null);
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
-  const addToast = useCallback((message, type = "info", duration = 4000) => {
+  const addToast = useCallback((msgOrObj, type = "info", duration = 4000) => {
     const id = `toast_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    let title = "";
+    let message = "";
+    let toastType = type;
+
+    if (typeof msgOrObj === "object" && msgOrObj !== null) {
+      title = msgOrObj.title || "";
+      message = msgOrObj.message || "";
+      toastType = msgOrObj.type || type;
+    } else {
+      message = String(msgOrObj || "");
+    }
+
     setToasts((prev) => [
       ...prev,
-      { id, message, type, duration, isPaused: false },
+      { id, title, message, type: toastType, duration, isPaused: false },
     ]);
   }, []);
 
@@ -61,20 +73,27 @@ function ToastItem({ toast, onRemove }) {
       onMouseLeave={() => setIsHovered(false)}
       role="alert"
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
         {toast.type === "success" ? (
-          <CheckCircle2 size={16} color="#10B981" />
+          <CheckCircle2 size={16} color="#10B981" style={{ marginTop: "2px", flexShrink: 0 }} />
         ) : toast.type === "error" ? (
-          <AlertCircle size={16} color="#EF4444" />
+          <AlertCircle size={16} color="#EF4444" style={{ marginTop: "2px", flexShrink: 0 }} />
         ) : (
-          <Info size={16} color="#A1A1AA" />
+          <Info size={16} color="#A1A1AA" style={{ marginTop: "2px", flexShrink: 0 }} />
         )}
-        <span style={{ fontSize: "0.85rem" }}>{toast.message}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+          {toast.title && (
+            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#FFFFFF" }}>
+              {toast.title}
+            </span>
+          )}
+          <span style={{ fontSize: "0.8rem", color: "#A1A1AA" }}>{toast.message}</span>
+        </div>
       </div>
       <button
         onClick={onRemove}
         className="btn-icon"
-        style={{ padding: "2px 6px", color: "#71717A", display: "inline-flex", alignItems: "center" }}
+        style={{ padding: "2px 6px", color: "#71717A", display: "inline-flex", alignItems: "center", marginLeft: "12px" }}
         aria-label="Close notification"
       >
         <X size={14} />

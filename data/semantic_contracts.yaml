@@ -1,0 +1,288 @@
+# ============================================================================
+# EvidenceIQ.ai — Governed Semantic Contracts (YAML)
+# Accenture Innovation Challenge 2026, Track 3 (BusinessIntelligence.ai)
+# ============================================================================
+# This file is the SINGLE SOURCE OF TRUTH for all KPI/metric definitions,
+# dimensions, lineage, access restrictions, and thresholds. Every downstream
+# consumer (dashboards, agents, LLMs) MUST query through these definitions
+# rather than re-deriving metrics independently.
+# ============================================================================
+
+version: 2
+owner: "EvidenceIQ Platform Team"
+last_updated: "2026-08-15T00:00:00Z"
+
+# ---------------------------------------------------------------------------
+# Global Dimension Registry
+# ---------------------------------------------------------------------------
+dimensions:
+  region:
+    type: categorical
+    values: ["Region_A", "Region_B", "Region_C", "Region_D"]
+    synonyms:
+      Region_A: ["North_India", "north india", "north region", "UP belt"]
+      Region_B: ["South_India", "south india", "south region"]
+      Region_C: ["East_India", "east india", "east region"]
+      Region_D: ["West_India", "west india", "west region"]
+  channel:
+    type: categorical
+    values: ["StoreType_A", "StoreType_B", "StoreType_C"]
+    synonyms:
+      StoreType_A: ["Mobile_App", "mobile app", "app", "android", "ios"]
+      StoreType_B: ["Web", "website", "desktop site", "online"]
+      StoreType_C: ["Store", "retail store", "offline", "in-store"]
+  store:
+    type: integer
+    range: [101, 108]
+    description: "Individual store identifiers within regions"
+
+# ---------------------------------------------------------------------------
+# KPI / Metric Definitions
+# ---------------------------------------------------------------------------
+metrics:
+  "metric:revenue":
+    display_name: "Regional Revenue"
+    formula: "SUM(Sales)"
+    unit: "INR"
+    grain: "daily, per region/channel"
+    allowed_dimensions: ["region", "channel", "store"]
+    synonyms: ["revenue", "sales", "turnover", "top-line"]
+    owner_team: "finance_team"
+    owner_role: "CFO / Regional Finance Director"
+    version: 1
+    priority_weight: 1.0
+    source_of_record: "rossmann_store_sales.csv"
+    refresh_cadence: "daily_at_midnight_utc"
+    typical_latency_hours: 0
+    minimum_baseline_days: 14
+    lineage:
+      - "POS_terminals -> transactions_db -> daily_aggregations -> rossmann_store_sales.csv"
+    connected_kpis: ["metric:order_volume", "metric:conversion_rate"]
+    thresholds:
+      z_medium: 1.5
+      z_high: 2.5
+      business_impact_minimum_inr: 10000
+    role_access:
+      executive:
+        visible_fields: ["display_name", "observed_value", "expected_value", "delta_pct", "severity", "recommendation"]
+        hidden_fields: ["z_score", "sigma", "lineage", "scoring_breakdown"]
+      analyst:
+        visible_fields: ["*"]
+        hidden_fields: []
+      regional_manager:
+        visible_fields: ["display_name", "observed_value", "delta_pct", "severity", "recommendation"]
+        hidden_fields: ["z_score", "sigma", "lineage"]
+        row_filter: "region = current_user_attribute('region')"
+
+  "metric:order_volume":
+    display_name: "Order Volume"
+    formula: "COUNT(DISTINCT order_id)"
+    unit: "Orders"
+    grain: "daily, per region/channel"
+    allowed_dimensions: ["region", "channel"]
+    synonyms: ["orders", "order count", "transactions", "volume"]
+    owner_team: "growth_team"
+    owner_role: "Growth Marketing Lead"
+    version: 1
+    priority_weight: 0.8
+    source_of_record: "orders_db"
+    refresh_cadence: "hourly"
+    typical_latency_hours: 1
+    minimum_baseline_days: 14
+    lineage:
+      - "order_events -> order_aggregations -> orders_db"
+    connected_kpis: ["metric:conversion_rate"]
+    thresholds:
+      z_medium: 1.5
+      z_high: 2.5
+      business_impact_minimum_inr: 5000
+    role_access:
+      executive:
+        visible_fields: ["display_name", "observed_value", "delta_pct"]
+        hidden_fields: ["z_score", "lineage"]
+      analyst:
+        visible_fields: ["*"]
+        hidden_fields: []
+
+  "metric:conversion_rate":
+    display_name: "Checkout Conversion Rate"
+    formula: "SUM(completed_checkouts) / SUM(initiated_checkouts) * 100"
+    unit: "%"
+    grain: "daily, per region/channel"
+    allowed_dimensions: ["region", "channel"]
+    synonyms: ["conversion", "checkout rate", "CR", "funnel conversion"]
+    owner_team: "product_team"
+    owner_role: "VP Product / Checkout Engineering Lead"
+    version: 1
+    priority_weight: 0.9
+    source_of_record: "analytics_events"
+    refresh_cadence: "realtime"
+    typical_latency_hours: 0
+    minimum_baseline_days: 14
+    lineage:
+      - "web_app_logs -> conversion_pipeline -> analytics_events"
+    connected_kpis: ["metric:revenue", "event:product_release"]
+    thresholds:
+      z_medium: 1.5
+      z_high: 2.5
+      business_impact_minimum_inr: 0
+    role_access:
+      executive:
+        visible_fields: ["display_name", "observed_value", "delta_pct"]
+        hidden_fields: ["z_score", "lineage"]
+      analyst:
+        visible_fields: ["*"]
+        hidden_fields: []
+
+  "metric:ticket_rate":
+    display_name: "Support Ticket Rate"
+    formula: "COUNT(tickets) / (SUM(orders) / 1000)"
+    unit: "tickets/1k orders"
+    grain: "daily, per region/channel"
+    allowed_dimensions: ["region", "channel"]
+    synonyms: ["ticket rate", "support rate", "complaint rate", "issue rate"]
+    owner_team: "customer_ops"
+    owner_role: "Customer Operations Director"
+    version: 1
+    priority_weight: 0.6
+    source_of_record: "support_tickets.csv"
+    refresh_cadence: "daily_at_midnight_utc"
+    typical_latency_hours: 0
+    minimum_baseline_days: 14
+    lineage:
+      - "support_ticket_system -> support_tickets.csv"
+    connected_kpis: ["metric:conversion_rate"]
+    thresholds:
+      z_medium: 2.0
+      z_high: 3.0
+      business_impact_minimum_inr: 0
+    role_access:
+      executive:
+        visible_fields: ["display_name", "observed_value", "delta_pct"]
+        hidden_fields: ["z_score", "lineage"]
+      analyst:
+        visible_fields: ["*"]
+        hidden_fields: []
+
+  "metric:customer_traffic":
+    display_name: "Customer Traffic / Footfall"
+    formula: "SUM(Customers)"
+    unit: "Visitors"
+    grain: "daily, per region/channel/store"
+    allowed_dimensions: ["region", "channel", "store"]
+    synonyms: ["footfall", "traffic", "visitors", "sessions", "walk-ins"]
+    owner_team: "growth_team"
+    owner_role: "Growth Marketing Lead"
+    version: 1
+    priority_weight: 0.7
+    source_of_record: "rossmann_store_sales.csv"
+    refresh_cadence: "daily_at_midnight_utc"
+    typical_latency_hours: 0
+    minimum_baseline_days: 14
+    lineage:
+      - "POS_terminals -> footfall_counter -> rossmann_store_sales.csv"
+    connected_kpis: ["metric:revenue", "metric:order_volume"]
+    thresholds:
+      z_medium: 1.5
+      z_high: 2.5
+      business_impact_minimum_inr: 0
+    role_access:
+      executive:
+        visible_fields: ["display_name", "observed_value", "delta_pct"]
+        hidden_fields: ["z_score", "lineage"]
+      analyst:
+        visible_fields: ["*"]
+        hidden_fields: []
+
+# ---------------------------------------------------------------------------
+# Action Risk Table (Governs Recommendation Engine)
+# ---------------------------------------------------------------------------
+action_risk_table:
+  rollback_release:
+    risk: "medium"
+    reversibility: "reversible_within_minutes"
+    always_requires_review: true
+    authorized_roles: ["analyst", "devops_lead"]
+    escalation_required_above: "medium"
+  pause_campaign:
+    risk: "low"
+    reversibility: "reversible_within_hours"
+    always_requires_review: true
+    authorized_roles: ["analyst", "growth_marketing_lead"]
+    escalation_required_above: "high"
+  price_adjustment:
+    risk: "medium"
+    reversibility: "reversible_within_days"
+    always_requires_review: true
+    authorized_roles: ["regional_finance_director", "pricing_committee"]
+    escalation_required_above: "medium"
+  discontinue_product_line:
+    risk: "high"
+    reversibility: "irreversible"
+    always_requires_review: true
+    authorized_roles: ["cfo", "executive_committee"]
+    escalation_required_above: "low"
+  increase_inventory:
+    risk: "low"
+    reversibility: "reversible_within_days"
+    always_requires_review: false
+    authorized_roles: ["regional_manager", "supply_chain_lead"]
+    escalation_required_above: "high"
+
+# ---------------------------------------------------------------------------
+# Confidence Band Definitions
+# ---------------------------------------------------------------------------
+confidence_bands:
+  HIGH:
+    threshold: 0.75
+    description: "Strong multi-source corroboration; actionable without caveats"
+    action: "Recommend action with monitoring plan"
+  MEDIUM:
+    threshold: 0.45
+    description: "Partial corroboration; actionable with explicit caveats"
+    action: "Recommend action with human review gate"
+  LOW:
+    threshold: 0.20
+    description: "Weak or single-source evidence; investigation-only"
+    action: "Flag for further investigation, no action recommendation"
+  INSUFFICIENT_EVIDENCE:
+    threshold: 0.0
+    description: "Evidence below minimum threshold; abstain from attribution"
+    action: "Abstain and request clarification or additional data sources"
+
+# ---------------------------------------------------------------------------
+# Evidence Scoring Weights
+# ---------------------------------------------------------------------------
+evidence_weights:
+  correlation_strength: 0.30
+  temporal_alignment: 0.25
+  independent_corroboration: 0.25
+  quasi_causal_evidence: 0.20
+  contradiction_penalty: 0.30
+  data_quality_penalty: 0.15
+
+# ---------------------------------------------------------------------------
+# Role Definitions (RBAC)
+# ---------------------------------------------------------------------------
+roles:
+  executive:
+    display_name: "Executive / Business Sponsor"
+    narrative_focus: "high_level_business_impact"
+    show_z_scores: false
+    show_raw_evidence_nodes: false
+    data_scope: "all_regions"
+    can_approve_actions: ["pause_campaign", "discontinue_product_line"]
+  analyst:
+    display_name: "Operations / BI Analyst"
+    narrative_focus: "technical_deep_dive"
+    show_z_scores: true
+    show_raw_evidence_nodes: true
+    data_scope: "all_regions"
+    can_approve_actions: ["rollback_release", "pause_campaign", "price_adjustment"]
+  regional_manager:
+    display_name: "Regional Operations Manager"
+    narrative_focus: "regional_operational_impact"
+    show_z_scores: false
+    show_raw_evidence_nodes: false
+    data_scope: "own_region_only"
+    can_approve_actions: ["increase_inventory"]

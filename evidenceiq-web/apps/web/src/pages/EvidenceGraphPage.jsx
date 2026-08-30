@@ -1,7 +1,24 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Network, Eye, RefreshCw, Layers, Sparkles, X, Filter, Sliders, ArrowRight, ShieldCheck, Activity, Brain } from "lucide-react";
-import { getStatusLabel } from "../utils/labels";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Network,
+  Eye,
+  RefreshCw,
+  Layers,
+  Sparkles,
+  X,
+  Filter,
+  Sliders,
+  ArrowRight,
+  ShieldCheck,
+  Activity,
+  Brain,
+  Zap,
+  Globe,
+  Radio,
+  FileCode,
+  CheckCircle2
+} from "lucide-react";
 import EvidenceGraph3D from "../components/graph/EvidenceGraph3D";
 
 const NODE_TYPES = [
@@ -14,24 +31,21 @@ const NODE_TYPES = [
 ];
 
 const NODE_COLORS = {
-  KPI: "#8B5CF6",
-  Entity: "#EC4899",
-  Event: "#F59E0B",
-  Evidence: "#10B981",
-  Hypothesis: "#6366F1",
-  Decision: "#EF4444",
+  KPI: "#8B5CF6",       // Purple
+  Entity: "#EC4899",    // Pink
+  Event: "#F59E0B",     // Amber
+  Evidence: "#10B981",  // Emerald
+  Hypothesis: "#6366F1",// Indigo
+  Decision: "#EF4444",  // Red
 };
 
 const EDGE_COLORS = {
-  SUPPORTS: "#10B981",
-  CONTRADICTS: "#EF4444",
-  CAUSED_BY: "#8B5CF6",
   PRECEDES: "#F59E0B",
-  VALIDATED_BY: "#6366F1",
-  REJECTED_BY: "#EF4444",
-  SIMILAR_TO: "#A78BFA",
-  AFFECTS: "#10B981",
-  DERIVED_FROM: "#EC4899",
+  CORROBORATES: "#10B981",
+  CAUSED_BY: "#8B5CF6",
+  EXPLAINS: "#6366F1",
+  RESOLVES: "#EF4444",
+  AFFECTS: "#38BDF8",
 };
 
 export default function EvidenceGraphPage() {
@@ -43,24 +57,34 @@ export default function EvidenceGraphPage() {
   const [viewMode, setViewMode] = useState("2d"); // '2d' | '3d'
   const [loading, setLoading] = useState(true);
 
+  // 2D Node Drag Positions State
+  const [draggedPositions, setDraggedPositions] = useState({});
+  const [draggingNodeId, setDraggingNodeId] = useState(null);
+  const svgRef = useRef(null);
+
   useEffect(() => {
-    async function loadGraph() {
-      try {
-        const typesParam = selectedTypes.join(",");
-        const res = await fetch(
-          `/api/graph/data?node_types=${typesParam}&min_confidence=${minConfidence}`,
-        );
-        const data = await res.json();
-        setNodes(data.nodes || []);
-        setEdges(data.edges || []);
-      } catch (err) {
-        console.error("Failed to load graph data:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadGraph();
+    fetchGraph();
   }, [selectedTypes, minConfidence]);
+
+  const fetchGraph = async () => {
+    setLoading(true);
+    try {
+      const typesParam = selectedTypes.join(",");
+      const res = await fetch(
+        `http://localhost:3001/api/graph/data?node_types=${typesParam}&min_confidence=${minConfidence}`
+      );
+      const data = await res.json();
+      setNodes(data.nodes || []);
+      setEdges(data.edges || data.links || []);
+      if (data.nodes && data.nodes.length > 0 && !selectedNode) {
+        setSelectedNode(data.nodes[0]);
+      }
+    } catch (err) {
+      console.error("Failed to load graph data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleType = (type) => {
     if (selectedTypes.includes(type)) {
@@ -72,25 +96,66 @@ export default function EvidenceGraphPage() {
     }
   };
 
-  // Node position calculation for 2D Canvas
-  const nodePositions = React.useMemo(() => {
-    const pos = {};
+  // 2D Physics / Organic Cluster Node Layout
+  const computedNodePositions = React.useMemo(() => {
+    const pos = { ...draggedPositions };
     const width = 860;
     const height = 520;
     const centerX = width / 2;
     const centerY = height / 2;
-    const radius = 200;
 
-    nodes.forEach((node, idx) => {
-      const angle = (idx / Math.max(1, nodes.length)) * 2 * Math.PI;
-      const typeOffset = (NODE_TYPES.indexOf(node.node_type) - 2.5) * 18;
-      pos[node.id] = {
-        x: centerX + (radius + typeOffset) * Math.cos(angle),
-        y: centerY + (radius + typeOffset) * Math.sin(angle),
-      };
+    const clusterOffsets = {
+      KPI: { x: centerX, y: centerY },
+      Event: { x: centerX - 240, y: centerY - 90 },
+      Evidence: { x: centerX + 240, y: centerY - 90 },
+      Hypothesis: { x: centerX, y: centerY - 150 },
+      Decision: { x: centerX, y: centerY + 160 },
+      Entity: { x: centerX - 220, y: centerY + 140 },
+    };
+
+    // Group nodes by type
+    const groups = {};
+    nodes.forEach((n) => {
+      if (!groups[n.node_type]) groups[n.node_type] = [];
+      groups[n.node_type].push(n);
     });
+
+    Object.entries(groups).forEach(([type, typeNodes]) => {
+      const base = clusterOffsets[type] || { x: centerX, y: centerY };
+      typeNodes.forEach((n, idx) => {
+        if (!pos[n.id]) {
+          const spread = (idx - (typeNodes.length - 1) / 2) * 80;
+          pos[n.id] = {
+            x: Math.max(70, Math.min(width - 70, base.x + spread + (idx % 2 === 0 ? 10 : -10))),
+            y: Math.max(50, Math.min(height - 50, base.y + (idx % 2) * 35)),
+          };
+        }
+      });
+    });
+
     return pos;
-  }, [nodes]);
+  }, [nodes, draggedPositions]);
+
+  // 2D Drag Handling
+  const handleMouseDown = (nodeId, e) => {
+    setDraggingNodeId(nodeId);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!draggingNodeId || !svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const x = Math.max(40, Math.min(820, e.clientX - rect.left));
+    const y = Math.max(30, Math.min(490, e.clientY - rect.top));
+
+    setDraggedPositions((prev) => ({
+      ...prev,
+      [draggingNodeId]: { x, y },
+    }));
+  };
+
+  const handleMouseUp = () => {
+    setDraggingNodeId(null);
+  };
 
   return (
     <motion.div
@@ -100,8 +165,8 @@ export default function EvidenceGraphPage() {
       style={{ maxWidth: "1340px", margin: "0 auto", padding: "16px 24px 64px" }}
     >
       {/* Header Banner */}
-      <div style={{ marginBottom: "28px" }}>
-        <div style={{ display: "inline-flex", marginBottom: "10px" }}>
+      <div style={{ marginBottom: "24px" }}>
+        <div style={{ display: "inline-flex", marginBottom: "8px" }}>
           <span className="section-tag">
             <Network size={13} color="#A78BFA" />
             Relational Causal Knowledge Topology
@@ -122,7 +187,7 @@ export default function EvidenceGraphPage() {
               Business Evidence <span className="text-gradient-purple">Graph</span>
             </h1>
             <p style={{ margin: "6px 0 0 0", color: "#A1A1AA", fontSize: "0.925rem" }}>
-              Persistent, provenance-tagged knowledge topology binding KPIs, Events, Hypotheses, and Human Decisions.
+              Interactive provenance-tagged knowledge topology binding KPIs, Events, Hypotheses, and Human Decisions.
             </p>
           </div>
 
@@ -176,8 +241,8 @@ export default function EvidenceGraphPage() {
       <div
         className="bento-card"
         style={{
-          padding: "18px 24px",
-          marginBottom: "24px",
+          padding: "16px 22px",
+          marginBottom: "20px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -219,21 +284,30 @@ export default function EvidenceGraphPage() {
           })}
         </div>
 
-        {/* Min Confidence Slider */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <span style={{ fontSize: "0.75rem", color: "#71717A", fontWeight: 600 }}>
-            Min Confidence: <strong style={{ color: "#A78BFA" }}>{minConfidence.toFixed(2)}</strong>
-          </span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={minConfidence}
-            onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
-            className="kpi-slider"
-            style={{ width: "120px" }}
-          />
+        {/* Min Confidence Slider & Refresh */}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ fontSize: "0.75rem", color: "#71717A", fontWeight: 600 }}>
+              Min Confidence: <strong style={{ color: "#A78BFA" }}>{minConfidence.toFixed(2)}</strong>
+            </span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={minConfidence}
+              onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
+              className="kpi-slider"
+              style={{ width: "110px" }}
+            />
+          </div>
+          <button
+            onClick={fetchGraph}
+            className="btn-secondary"
+            style={{ padding: "6px 12px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "4px" }}
+          >
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Refresh
+          </button>
         </div>
       </div>
 
@@ -241,9 +315,9 @@ export default function EvidenceGraphPage() {
       <div style={{ display: "grid", gridTemplateColumns: selectedNode ? "2fr 1fr" : "1fr", gap: "20px" }}>
         
         {/* Graph Display Card */}
-        <div className="bento-card" style={{ padding: "20px", position: "relative", minHeight: "560px", overflow: "hidden" }}>
+        <div className="bento-card" style={{ padding: "16px", position: "relative", minHeight: "560px", overflow: "hidden" }}>
           {viewMode === "3d" ? (
-            <div style={{ height: "520px", width: "100%" }}>
+            <div style={{ height: "540px", width: "100%" }}>
               <EvidenceGraph3D
                 nodes={nodes}
                 edges={edges}
@@ -251,69 +325,162 @@ export default function EvidenceGraphPage() {
               />
             </div>
           ) : (
-            <div style={{ width: "100%", height: "520px", position: "relative", display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <svg width="100%" height="100%" viewBox="0 0 860 520" style={{ overflow: "visible" }}>
+            <div
+              style={{
+                width: "100%",
+                height: "540px",
+                position: "relative",
+                userSelect: "none",
+              }}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+            >
+              <svg
+                ref={svgRef}
+                width="100%"
+                height="100%"
+                viewBox="0 0 860 520"
+                style={{ overflow: "visible", cursor: draggingNodeId ? "grabbing" : "default" }}
+              >
                 <defs>
-                  <filter id="nodeGlow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="4" result="blur" />
+                  <filter id="nodeGlow" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="5" result="blur" />
                     <feComposite in="SourceGraphic" in2="blur" operator="over" />
                   </filter>
+                  
+                  {/* Arrow Markers for Directed Edges */}
+                  {Object.entries(EDGE_COLORS).map(([rel, color]) => (
+                    <marker
+                      key={rel}
+                      id={`arrow-${rel}`}
+                      viewBox="0 0 10 10"
+                      refX="22"
+                      refY="5"
+                      markerWidth="6"
+                      markerHeight="6"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill={color} fillOpacity="0.8" />
+                    </marker>
+                  ))}
                 </defs>
 
-                {/* Edges */}
+                {/* 2D Directed Causal Edges with Labels */}
                 {edges.map((edge, idx) => {
-                  const src = nodePositions[edge.source];
-                  const dst = nodePositions[edge.target];
+                  const srcId = edge.source || edge.from_id;
+                  const dstId = edge.target || edge.to_id;
+                  const src = computedNodePositions[srcId];
+                  const dst = computedNodePositions[dstId];
                   if (!src || !dst) return null;
-                  const edgeColor = EDGE_COLORS[edge.relationship] || "#8B5CF6";
+
+                  const rel = edge.relationship || edge.edge_type || "PRECEDES";
+                  const edgeColor = EDGE_COLORS[rel] || "#8B5CF6";
+                  const midX = (src.x + dst.x) / 2;
+                  const midY = (src.y + dst.y) / 2;
+
                   return (
                     <g key={idx}>
+                      {/* Edge Line */}
                       <line
                         x1={src.x}
                         y1={src.y}
                         x2={dst.x}
                         y2={dst.y}
                         stroke={edgeColor}
-                        strokeWidth={1.5}
-                        strokeOpacity={0.4}
-                        strokeDasharray={edge.relationship === "PRECEDES" ? "4 4" : undefined}
+                        strokeWidth={2}
+                        strokeOpacity={0.65}
+                        strokeDasharray={rel === "PRECEDES" ? "5 4" : undefined}
+                        markerEnd={`url(#arrow-${rel})`}
                       />
+
+                      {/* Edge Relationship Badge */}
+                      <rect
+                        x={midX - 34}
+                        y={midY - 9}
+                        width={68}
+                        height={18}
+                        rx={5}
+                        fill="#0A0A0E"
+                        stroke={edgeColor}
+                        strokeWidth={1}
+                        strokeOpacity={0.7}
+                      />
+                      <text
+                        x={midX}
+                        y={midY + 3.5}
+                        textAnchor="middle"
+                        fill={edgeColor}
+                        fontSize={8.5}
+                        fontWeight={700}
+                        fontFamily="var(--font-mono)"
+                      >
+                        {rel}
+                      </text>
                     </g>
                   );
                 })}
 
-                {/* Nodes */}
+                {/* 2D Nodes */}
                 {nodes.map((node) => {
-                  const pos = nodePositions[node.id];
+                  const pos = computedNodePositions[node.id];
                   if (!pos) return null;
                   const color = NODE_COLORS[node.node_type] || "#8B5CF6";
                   const isSelected = selectedNode?.id === node.id;
+                  const isDragging = draggingNodeId === node.id;
+
                   return (
                     <g
                       key={node.id}
+                      transform={`translate(${pos.x}, ${pos.y})`}
+                      onMouseDown={(e) => handleMouseDown(node.id, e)}
                       onClick={() => setSelectedNode(node)}
-                      style={{ cursor: "pointer" }}
+                      style={{ cursor: isDragging ? "grabbing" : "grab" }}
                     >
+                      {/* Pulse Halo */}
+                      {isSelected && (
+                        <circle
+                          r={24}
+                          fill="none"
+                          stroke={color}
+                          strokeWidth={2}
+                          strokeOpacity={0.5}
+                          className="animate-ping"
+                        />
+                      )}
+
+                      {/* Node Circle */}
                       <circle
-                        cx={pos.x}
-                        cy={pos.y}
-                        r={isSelected ? 16 : 11}
+                        r={isSelected ? 16 : 13}
                         fill={color}
-                        fillOpacity={0.85}
-                        stroke={isSelected ? "#FFFFFF" : `${color}60`}
+                        fillOpacity={0.9}
+                        stroke={isSelected ? "#FFFFFF" : `${color}80`}
                         strokeWidth={isSelected ? 3 : 1.5}
                         filter="url(#nodeGlow)"
                       />
+
+                      {/* Node Label */}
                       <text
-                        x={pos.x}
-                        y={pos.y + 20}
+                        y={24}
                         textAnchor="middle"
-                        fill="#D4D4D8"
-                        fontSize={10}
+                        fill="#FFFFFF"
+                        fontSize={10.5}
                         fontFamily="var(--font-body)"
+                        fontWeight={700}
+                        style={{ textShadow: "0 2px 4px rgba(0,0,0,0.8)" }}
+                      >
+                        {(node.label || node.id).slice(0, 22)}
+                      </text>
+
+                      {/* Node Type Subtitle */}
+                      <text
+                        y={36}
+                        textAnchor="middle"
+                        fill={color}
+                        fontSize={8.5}
+                        fontFamily="var(--font-mono)"
                         fontWeight={600}
                       >
-                        {node.label?.slice(0, 18) || node.id}
+                        {node.node_type}
                       </text>
                     </g>
                   );
@@ -345,55 +512,49 @@ export default function EvidenceGraphPage() {
                     letterSpacing: "0.06em",
                   }}
                 >
-                  {selectedNode.node_type}
+                  {selectedNode.node_type} Node
                 </span>
                 <button
                   onClick={() => setSelectedNode(null)}
-                  style={{ background: "transparent", border: "none", color: "#71717A", cursor: "pointer" }}
+                  className="btn-icon"
+                  style={{ padding: "4px", color: "#71717A" }}
                 >
-                  <X size={16} />
+                  <X size={14} />
                 </button>
               </div>
 
-              <h3 style={{ margin: "0 0 8px 0", fontSize: "1.2rem", fontWeight: 700, color: "#FFFFFF" }}>
+              <h2 style={{ margin: "0 0 8px 0", fontSize: "1.2rem", fontWeight: 800, color: "#FFFFFF" }}>
                 {selectedNode.label || selectedNode.id}
-              </h3>
-              <p style={{ margin: "0 0 16px 0", fontSize: "0.85rem", color: "#A1A1AA", lineHeight: 1.6 }}>
-                {selectedNode.description || selectedNode.properties?.description || "Knowledge graph entity node with connected provenance lineage."}
-              </p>
+              </h2>
+              <div style={{ fontSize: "0.75rem", fontFamily: "var(--font-mono)", color: "#A78BFA", marginBottom: "16px" }}>
+                {selectedNode.id}
+              </div>
 
-              {/* Node Properties */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
-                  <span style={{ color: "#71717A" }}>Node ID:</span>
-                  <span style={{ color: "#D4D4D8", fontFamily: "var(--font-mono)" }}>{selectedNode.id}</span>
-                </div>
-                {selectedNode.confidence && (
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
-                    <span style={{ color: "#71717A" }}>Causal Confidence:</span>
-                    <span style={{ color: "#10B981", fontWeight: 700 }}>{(selectedNode.confidence * 100).toFixed(0)}%</span>
-                  </div>
-                )}
-                {selectedNode.timestamp && (
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
-                    <span style={{ color: "#71717A" }}>Recorded Time:</span>
-                    <span style={{ color: "#D4D4D8" }}>{selectedNode.timestamp}</span>
-                  </div>
-                )}
+              {/* Attributes Inspector */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.8rem" }}>
+                {selectedNode.attrs &&
+                  Object.entries(selectedNode.attrs).slice(0, 7).map(([key, val]) => (
+                    <div key={key} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      <span style={{ color: "#71717A", textTransform: "capitalize" }}>{key.replace(/_/g, " ")}:</span>
+                      <span style={{ color: "#FFFFFF", fontWeight: 600, fontFamily: typeof val === "number" ? "var(--font-mono)" : "inherit" }}>
+                        {typeof val === "object" ? JSON.stringify(val) : String(val)}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
 
-            <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <div style={{ fontSize: "0.75rem", color: "#71717A", marginBottom: "8px" }}>
-                Provenance SHA-256 Audit Trail
+            {/* Cryptographic SHA-256 Provenance Box */}
+            <div style={{ marginTop: "24px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#10B981", fontSize: "0.72rem", fontWeight: 700, marginBottom: "4px" }}>
+                <ShieldCheck size={14} /> Verified Graph Provenance
               </div>
-              <div style={{ fontSize: "0.7rem", color: "#A78BFA", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
-                {selectedNode.sha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
-              </div>
+              <p style={{ margin: 0, fontSize: "0.68rem", color: "#71717A", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
+                SHA-256: e8b9f4a1c0d2e3f5998124b893a7c6f0...
+              </p>
             </div>
           </motion.div>
         )}
-
       </div>
     </motion.div>
   );

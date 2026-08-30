@@ -1,131 +1,44 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Network, Eye, Layers, Sparkles, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import * as THREE from "three";
+import { ZoomIn, ZoomOut, RotateCcw, Activity } from "lucide-react";
 
-const NODE_COLORS = {
-  KPI: 0x6366f1,
-  Event: 0xf59e0b,
-  Evidence: 0xef4444,
-  Hypothesis: 0x10b981,
-  Decision: 0xa855f7,
-  Entity: 0x38bdf8,
+const NODE_HEX_COLORS = {
+  KPI: 0x8b5cf6,       // Purple
+  Entity: 0xec4899,    // Pink
+  Event: 0xf59e0b,     // Amber
+  Evidence: 0x10b981,  // Emerald
+  Hypothesis: 0x6366f1,// Indigo
+  Decision: 0xef4444,  // Red
 };
 
-export default function EvidenceGraph3D({ storeId = 101, onSelectNode }) {
-  const mountRef = useRef(null);
-  const [selectedNode, setSelectedNode] = useState(null);
-  const [graphData, setGraphData] = useState(null);
+const EDGE_HEX_COLORS = {
+  PRECEDES: 0xf59e0b,
+  CORROBORATES: 0x10b981,
+  CAUSED_BY: 0x8b5cf6,
+  EXPLAINS: 0x6366f1,
+  RESOLVES: 0xef4444,
+  AFFECTS: 0x38bdf8,
+};
 
-  useEffect(() => {
-    // Fetch Graph Topology or use rich default
-    fetch(`/api/anomalies/${storeId}/graph`)
-      .then((res) => res.json())
-      .then((data) => {
-        setGraphData(data);
-        if (data.nodes && data.nodes.length > 0) {
-          setSelectedNode(data.nodes[0]);
-          onSelectNode?.(data.nodes[0]);
-        }
-      })
-      .catch(() => {
-        const defaultData = {
-          nodes: [
-            {
-              id: `kpi:rossmann_sales_store_${storeId}`,
-              label: `Store ${storeId} Sales KPI`,
-              type: "KPI",
-              val: 28,
-              color: "#6366F1",
-              desc: "Daily revenue dropped 67.9% on Aug 12",
-              position: [0, 2, 0],
-            },
-            {
-              id: "event:pos_terminal_update_v5_4",
-              label: "POS Terminal Update v5.4",
-              type: "Event",
-              val: 20,
-              color: "#F59E0B",
-              desc: "Firmware roll-out to Store POS registers",
-              position: [-6, 3, 2],
-            },
-            {
-              id: "evidence:ticket_spike_1001",
-              label: "Ticket Cluster: POS Timeout",
-              type: "Evidence",
-              val: 18,
-              color: "#EF4444",
-              desc: "3 support tickets: POS barcode scan failure",
-              position: [-4, -3, -2],
-            },
-            {
-              id: "hypothesis:v5_4_pos_crash",
-              label: "Hypothesis: POS Software Bug",
-              type: "Hypothesis",
-              val: 24,
-              color: "#10B981",
-              desc: "Evidence Score: 0.85 (High Confidence)",
-              position: [5, 1, -1],
-            },
-            {
-              id: "decision:rollback_v5_4",
-              label: "Decision: Rollback Firmware",
-              type: "Decision",
-              val: 22,
-              color: "#A855F7",
-              desc: "Checkpoint: Confirmed by Senior Analyst",
-              position: [3, -4, 2],
-            },
-          ],
-          links: [
-            {
-              source: "event:pos_terminal_update_v5_4",
-              target: `kpi:rossmann_sales_store_${storeId}`,
-              type: "PRECEDES",
-              weight: 0.85,
-            },
-            {
-              source: "evidence:ticket_spike_1001",
-              target: "hypothesis:v5_4_pos_crash",
-              type: "CORROBORATES",
-              weight: 0.8,
-            },
-            {
-              source: "hypothesis:v5_4_pos_crash",
-              target: `kpi:rossmann_sales_store_${storeId}`,
-              type: "EXPLAINS",
-              weight: 0.85,
-            },
-            {
-              source: "hypothesis:v5_4_pos_crash",
-              target: "decision:rollback_v5_4",
-              type: "RESOLVES",
-              weight: 0.92,
-            },
-          ],
-        };
-        setGraphData(defaultData);
-        setSelectedNode(defaultData.nodes[0]);
-        onSelectNode?.(defaultData.nodes[0]);
-      });
-  }, [storeId]);
+export default function EvidenceGraph3D({ nodes = [], edges = [], onSelectNode }) {
+  const mountRef = useRef(null);
+  const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const controlsRef = useRef({ zoom: 24, rotationX: 0.2, rotationY: 0.4 });
 
   useEffect(() => {
     const container = mountRef.current;
-    if (!container || !graphData) return;
+    if (!container) return;
 
-    // 1. Three.js Scene Setup
+    // 1. Three.js Scene & Camera Setup
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      1000
-    );
-    camera.position.set(0, 0, 22);
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 520;
+
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    camera.position.set(0, 0, controlsRef.current.zoom);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.innerHTML = "";
     container.appendChild(renderer.domElement);
@@ -133,280 +46,252 @@ export default function EvidenceGraph3D({ storeId = 101, onSelectNode }) {
     const graphGroup = new THREE.Group();
     scene.add(graphGroup);
 
-    // Ambient and Directional Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    // Ambient and Directional Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0x818cf8, 1.5);
-    dirLight.position.set(10, 20, 15);
-    scene.add(dirLight);
+    const dirLight1 = new THREE.DirectionalLight(0x818cf8, 1.8);
+    dirLight1.position.set(15, 25, 20);
+    scene.add(dirLight1);
 
-    // 2. Nodes Setup
+    const dirLight2 = new THREE.DirectionalLight(0xa78bfa, 1.0);
+    dirLight2.position.set(-15, -20, -15);
+    scene.add(dirLight2);
+
+    // 2. Node Position Calculation (3D Spherical Force Layout)
     const nodeMeshes = new Map();
     const clickableObjects = [];
+    const nodePositions = new Map();
 
-    graphData.nodes.forEach((node) => {
-      const hexColor = NODE_COLORS[node.type] || 0x6366f1;
-      const radius = (node.val || 20) * 0.045;
+    const totalNodes = Math.max(nodes.length, 1);
+    nodes.forEach((node, idx) => {
+      // Compute spherical Fibonacci distribution for optimal spacing in 3D
+      const phi = Math.acos(-1 + (2 * idx) / totalNodes);
+      const theta = Math.sqrt(totalNodes * Math.PI) * phi;
+      const radius = 9.5 + (idx % 3) * 2.2;
 
-      const nodeGeo = new THREE.SphereGeometry(radius, 32, 32);
-      const nodeMat = new THREE.MeshStandardMaterial({
+      // Special cluster positioning: KPIs in center, Events left, Evidence right, Decisions top
+      let x = radius * Math.cos(theta) * Math.sin(phi);
+      let y = radius * Math.sin(theta) * Math.sin(phi);
+      let z = radius * Math.cos(phi) * 0.8;
+
+      if (node.node_type === "KPI") {
+        x *= 0.4; y *= 0.4; z *= 0.4;
+      } else if (node.node_type === "Event") {
+        x = -7.5 + (idx % 2) * 2;
+      } else if (node.node_type === "Evidence") {
+        x = 7.5 - (idx % 2) * 2;
+      } else if (node.node_type === "Decision") {
+        y = -6.5;
+      }
+
+      nodePositions.set(node.id, new THREE.Vector3(x, y, z));
+
+      const hexColor = NODE_HEX_COLORS[node.node_type] || 0x8b5cf6;
+      const sphereRadius = node.node_type === "KPI" ? 1.4 : node.node_type === "Hypothesis" ? 1.2 : 0.95;
+
+      // Node Sphere
+      const geo = new THREE.SphereGeometry(sphereRadius, 32, 32);
+      const mat = new THREE.MeshStandardMaterial({
         color: hexColor,
-        roughness: 0.25,
-        metalness: 0.2,
+        roughness: 0.2,
+        metalness: 0.35,
         emissive: hexColor,
-        emissiveIntensity: 0.35,
+        emissiveIntensity: 0.4,
       });
 
-      const mesh = new THREE.Mesh(nodeGeo, nodeMat);
-      const [x, y, z] = node.position || [
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 6,
-      ];
+      const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x, y, z);
-      mesh.userData = { nodeData: node };
+      mesh.userData = { node };
 
-      // Halo ring around node
-      const haloGeo = new THREE.RingGeometry(radius * 1.25, radius * 1.45, 32);
-      const haloMat = new THREE.MeshBasicMaterial({
+      // Halo Orbital Ring
+      const ringGeo = new THREE.RingGeometry(sphereRadius * 1.3, sphereRadius * 1.5, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
         color: hexColor,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.4,
+        opacity: 0.45,
       });
-      const halo = new THREE.Mesh(haloGeo, haloMat);
-      halo.position.set(x, y, z);
-      mesh.add(halo);
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      mesh.add(ring);
+
+      // Text Sprite Label
+      const canvas = document.createElement("canvas");
+      canvas.width = 380;
+      canvas.height = 70;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
+      ctx.roundRect(10, 10, 360, 50, 12);
+      ctx.fill();
+      ctx.strokeStyle = `#${hexColor.toString(16).padStart(6, "0")}`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 20px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const displayTxt = (node.label || node.id).slice(0, 26);
+      ctx.fillText(displayTxt, 190, 35);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.position.set(0, sphereRadius + 1.2, 0);
+      sprite.scale.set(4.5, 0.9, 1);
+      mesh.add(sprite);
 
       graphGroup.add(mesh);
       nodeMeshes.set(node.id, mesh);
       clickableObjects.push(mesh);
     });
 
-    // 3. Edges Setup (Curves + Pulse Particles)
+    // 3. Curved 3D Causal Edges Setup
     const edgeCurves = [];
+    edges.forEach((edge) => {
+      const srcId = edge.source || edge.from_id;
+      const dstId = edge.target || edge.to_id;
+      const srcPos = nodePositions.get(srcId);
+      const dstPos = nodePositions.get(dstId);
+      if (!srcPos || !dstPos) return;
 
-    graphData.links.forEach((link) => {
-      const sourceMesh = nodeMeshes.get(link.source);
-      const targetMesh = nodeMeshes.get(link.target);
-      if (!sourceMesh || !targetMesh) return;
+      const hexColor = EDGE_HEX_COLORS[edge.relationship || edge.edge_type] || 0x8b5cf6;
 
-      const start = sourceMesh.position;
-      const end = targetMesh.position;
+      // Create smooth Quadratic Bezier curve
       const mid = new THREE.Vector3()
-        .addVectors(start, end)
+        .addVectors(srcPos, dstPos)
         .multiplyScalar(0.5)
-        .add(new THREE.Vector3(0, 1.2, 0.5));
+        .add(new THREE.Vector3(0, 1.5, 0.8));
 
-      const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
-      edgeCurves.push(curve);
-
-      const points = curve.getPoints(40);
+      const curve = new THREE.QuadraticBezierCurve3(srcPos, mid, dstPos);
+      const points = curve.getPoints(36);
       const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
       const lineMat = new THREE.LineBasicMaterial({
-        color: 0x6366f1,
+        color: hexColor,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.6,
         linewidth: 2,
       });
+
       const line = new THREE.Line(lineGeo, lineMat);
       graphGroup.add(line);
 
-      // Add energy pulse particle along curve
-      const pulseGeo = new THREE.SphereGeometry(0.12, 12, 12);
-      const pulseMat = new THREE.MeshBasicMaterial({
-        color: 0x10b981,
-        transparent: true,
-        opacity: 0.9,
-      });
-      const pulse = new THREE.Mesh(pulseGeo, pulseMat);
-      graphGroup.add(pulse);
-      curve.pulseMesh = pulse;
+      // Pulse Particle on Curve
+      const particleGeo = new THREE.SphereGeometry(0.18, 16, 16);
+      const particleMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const particle = new THREE.Mesh(particleGeo, particleMat);
+      graphGroup.add(particle);
+
+      edgeCurves.push({ curve, particle, progress: Math.random() });
     });
 
-    // 4. Mouse Drag & Orbit Interaction
+    // 4. Mouse Orbit Controls & Click Interaction
     let isDragging = false;
-    let previousMousePosition = { x: 0, y: 0 };
-    let rotationVelocity = { x: 0.003, y: 0.004 };
+    let prevMousePos = { x: 0, y: 0 };
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
 
     const onMouseDown = (e) => {
       isDragging = true;
-      previousMousePosition = { x: e.clientX, y: e.clientY };
+      prevMousePos = { x: e.clientX, y: e.clientY };
     };
 
     const onMouseMove = (e) => {
       if (!isDragging) return;
-      const deltaX = e.clientX - previousMousePosition.x;
-      const deltaY = e.clientY - previousMousePosition.y;
+      const deltaX = e.clientX - prevMousePos.x;
+      const deltaY = e.clientY - prevMousePos.y;
 
-      graphGroup.rotation.y += deltaX * 0.008;
-      graphGroup.rotation.x += deltaY * 0.008;
+      graphGroup.rotation.y += deltaX * 0.006;
+      graphGroup.rotation.x += deltaY * 0.006;
 
-      previousMousePosition = { x: e.clientX, y: e.clientY };
+      prevMousePos = { x: e.clientX, y: e.clientY };
     };
 
     const onMouseUp = () => {
       isDragging = false;
     };
 
-    // 5. Raycasting for Node Selection
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-
     const onClick = (e) => {
-      const rect = container.getBoundingClientRect();
+      const rect = renderer.domElement.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(clickableObjects);
+      const intersects = raycaster.intersectObjects(clickableObjects, false);
 
       if (intersects.length > 0) {
-        const clickedNode = intersects[0].object.userData.nodeData;
-        setSelectedNode(clickedNode);
-        onSelectNode?.(clickedNode);
+        const clickedMesh = intersects[0].object;
+        const nodeData = clickedMesh.userData.node;
+        setSelectedNodeId(nodeData.id);
+        onSelectNode?.(nodeData);
+
+        // Highlight animation
+        clickableObjects.forEach((m) => {
+          m.material.emissiveIntensity = m === clickedMesh ? 0.9 : 0.3;
+        });
       }
     };
 
-    container.addEventListener("mousedown", onMouseDown);
+    const domElement = renderer.domElement;
+    domElement.addEventListener("mousedown", onMouseDown);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
-    container.addEventListener("click", onClick);
+    domElement.addEventListener("click", onClick);
 
-    // 6. Animation Loop
+    // 5. Animation Loop
     let animationFrameId;
-    let clock = new THREE.Clock();
-
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
-      const elapsedTime = clock.getElapsedTime();
 
-      // Gentle auto-rotation when not dragging
+      // Gentle auto-rotation when idle
       if (!isDragging) {
-        graphGroup.rotation.y += 0.003;
-        graphGroup.rotation.x = Math.sin(elapsedTime * 0.4) * 0.08;
+        graphGroup.rotation.y += 0.002;
       }
 
-      // Move pulse particles along bezier curves
-      edgeCurves.forEach((curve, idx) => {
-        if (curve.pulseMesh) {
-          const t = (elapsedTime * 0.4 + idx * 0.35) % 1;
-          const pos = curve.getPoint(t);
-          curve.pulseMesh.position.copy(pos);
-        }
+      // Animate edge particles along bezier curves
+      edgeCurves.forEach((item) => {
+        item.progress += 0.008;
+        if (item.progress > 1) item.progress = 0;
+        const pt = item.curve.getPoint(item.progress);
+        item.particle.position.copy(pt);
       });
 
       renderer.render(scene, camera);
     };
-
     animate();
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      container.removeEventListener("mousedown", onMouseDown);
+      domElement.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
-      container.removeEventListener("click", onClick);
+      domElement.removeEventListener("click", onClick);
       renderer.dispose();
     };
-  }, [graphData]);
+  }, [nodes, edges]);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", minHeight: "480px" }}>
-      {/* 3D WebGL Canvas Mount */}
-      <div
-        ref={mountRef}
-        style={{
-          width: "100%",
-          height: "480px",
-          cursor: "grab",
-          borderRadius: "12px",
-          background: "radial-gradient(circle at 50% 50%, rgba(99,102,241,0.08) 0%, rgba(15,17,23,0) 70%)",
-        }}
-      />
+    <div style={{ position: "relative", width: "100%", height: "100%", borderRadius: "14px", overflow: "hidden" }}>
+      <div ref={mountRef} style={{ width: "100%", height: "100%", cursor: "grab" }} />
 
-      {/* Floating Instructions Pill */}
+      {/* Floating 3D Controls */}
       <div
         style={{
           position: "absolute",
           top: "14px",
-          left: "14px",
-          background: "rgba(24, 29, 43, 0.75)",
-          backdropFilter: "blur(8px)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          padding: "6px 12px",
-          borderRadius: "100px",
-          fontSize: "0.75rem",
-          color: "#94A3B8",
+          right: "14px",
           display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          pointerEvents: "none",
+          gap: "8px",
+          background: "rgba(10, 10, 15, 0.8)",
+          backdropFilter: "blur(12px)",
+          padding: "6px 10px",
+          borderRadius: "10px",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
         }}
       >
-        <Sparkles size={12} color="#818CF8" />
-        <span>Drag to orbit in 3D · Click node to inspect</span>
+        <span style={{ fontSize: "0.72rem", color: "#A1A1AA", display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}>
+          <Activity size={12} color="#8B5CF6" /> Drag to Orbit · Click to Inspect
+        </span>
       </div>
-
-      {/* Floating Selected Node Quick Badge */}
-      {selectedNode && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{
-            position: "absolute",
-            bottom: "16px",
-            left: "16px",
-            right: "16px",
-            background: "rgba(24, 29, 43, 0.85)",
-            backdropFilter: "blur(12px)",
-            border: "1px solid rgba(99,102,241,0.3)",
-            borderRadius: "10px",
-            padding: "12px 18px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-          }}
-        >
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" }}>
-              <span
-                style={{
-                  fontSize: "0.68rem",
-                  fontWeight: 800,
-                  color: selectedNode.color || "#818CF8",
-                  background: `${selectedNode.color || "#818CF8"}20`,
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                }}
-              >
-                {selectedNode.type}
-              </span>
-              <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fff" }}>
-                {selectedNode.label || selectedNode.id}
-              </span>
-            </div>
-            <span style={{ fontSize: "0.78rem", color: "#94A3B8" }}>
-              {selectedNode.desc || "Causal evidence node connected via relational edges"}
-            </span>
-          </div>
-
-          <span
-            style={{
-              fontSize: "0.72rem",
-              fontFamily: "monospace",
-              color: "#818CF8",
-              background: "rgba(99,102,241,0.15)",
-              padding: "4px 8px",
-              borderRadius: "6px",
-            }}
-          >
-            ACTIVE 3D SELECTION
-          </span>
-        </motion.div>
-      )}
     </div>
   );
 }

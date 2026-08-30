@@ -242,6 +242,112 @@ app.post("/api/analytics/briefing/verify-hash", (req, res) =>
 // Grounded Copilot Q&A endpoint
 app.post("/api/chat/ask", (req, res) => proxyToFastApi(req, res, "/chat/ask"));
 
+// ============================================================================
+// Round 2 New Endpoints
+// ============================================================================
+
+// Semantic Contracts (YAML-governed single source of truth)
+app.get("/api/semantic-contracts", (req, res) =>
+  proxyToFastApi(req, res, "/semantic-contracts"),
+);
+
+// Cold-Start Forecasting (shrinkage estimation for sparse KPIs)
+app.get("/api/cold-start-forecast", (req, res) =>
+  proxyToFastApi(req, res, "/cold-start-forecast"),
+);
+
+// Shapley Value Attribution
+app.get("/api/shapley-attribution", (req, res) =>
+  proxyToFastApi(req, res, "/shapley-attribution"),
+);
+
+// Feedback Loop endpoints
+app.post("/api/feedback", (req, res) =>
+  proxyToFastApi(req, res, "/feedback"),
+);
+app.post("/api/feedback/validate", (req, res) =>
+  proxyToFastApi(req, res, "/feedback/validate"),
+);
+app.post("/api/feedback/compute-adjustments", (req, res) =>
+  proxyToFastApi(req, res, "/feedback/compute-adjustments"),
+);
+app.get("/api/feedback/summary", (req, res) =>
+  proxyToFastApi(req, res, "/feedback/summary"),
+);
+
+// RBAC / Auth endpoints
+app.get("/api/auth/roles", (req, res) =>
+  proxyToFastApi(req, res, "/auth/roles"),
+);
+app.get("/api/auth/user-profile", (req, res) =>
+  proxyToFastApi(req, res, "/auth/user-profile"),
+);
+app.post("/api/auth/check-action", (req, res) =>
+  proxyToFastApi(req, res, "/auth/check-action"),
+);
+
+// Telemetry Summary
+app.get("/api/telemetry/summary", (req, res) =>
+  proxyToFastApi(req, res, "/telemetry/summary"),
+);
+
+// Pipeline Stages (LLM vs non-LLM breakdown)
+app.get("/api/pipeline-stages", (req, res) =>
+  proxyToFastApi(req, res, "/pipeline-stages"),
+);
+
+// ============================================================================
+// Phase 2: Enterprise Connectors, Real-Time Webhooks & Database Scaling
+// ============================================================================
+
+// Connectors
+app.get("/api/connectors/list", (req, res) =>
+  proxyToFastApi(req, res, "/connectors/list"),
+);
+app.post("/api/connectors/test", (req, res) =>
+  proxyToFastApi(req, res, "/connectors/test"),
+);
+app.get("/api/connectors/introspect", (req, res) =>
+  proxyToFastApi(req, res, "/connectors/introspect"),
+);
+
+// Webhooks (with real-time Socket.io broadcast)
+app.post("/api/webhooks/:source", async (req, res) => {
+  const source = req.params.source;
+  try {
+    const pyRes = await fetch(`${FASTAPI_URL}/webhooks/${source}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+    const data = await pyRes.json();
+    io.emit("webhook:received", { source, data, received_at: new Date().toISOString() });
+    res.status(pyRes.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/webhooks/history", (req, res) =>
+  proxyToFastApi(req, res, "/webhooks/history"),
+);
+
+// Database Scaling Adapters
+app.get("/api/db-adapters/status", (req, res) =>
+  proxyToFastApi(req, res, "/db-adapters/status"),
+);
+app.post("/api/db-adapters/switch", (req, res) =>
+  proxyToFastApi(req, res, "/db-adapters/switch"),
+);
+
+// Multi-Tenancy & SSO
+app.get("/api/tenants", (req, res) =>
+  proxyToFastApi(req, res, "/tenants"),
+);
+app.post("/api/auth/sso-session", (req, res) =>
+  proxyToFastApi(req, res, "/auth/sso-session"),
+);
+
 // 3. Multi-Model Load Balancer Investigation Endpoint (Legacy Rossmann)
 app.post("/api/anomalies/investigate", async (req, res) => {
   const startTime = Date.now();
