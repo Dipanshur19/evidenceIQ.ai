@@ -1,0 +1,4 @@
+event_id,event_type,timestamp,region,channel,description,source,provenance
+event:mobile_app_release_v5_4,product_release,2026-08-12T09:00:00Z,North_India,Mobile_App,Mobile checkout flow redesign (v5.4) rolled out to North India users.,change_log,system-of-record
+event:competitor_diwali_promo,market_event,2026-08-11T00:00:00Z,South_India,Web,Competitor launched an early Diwali promotional campaign targeting South India web shoppers.,change_log,system-of-record
+event:pricing_update_east,price_change,2026-07-20T00:00:00Z,East_India,Store,"Routine price list update applied to East India store channel, no major shift expected.",change_log,system-of-record

@@ -1,0 +1,40 @@
+{
+  "kpi_metrics": {
+    "metric:revenue": "Gross Regional Revenue",
+    "metric:order_volume": "Total Order Volume",
+    "metric:conversion_rate": "Checkout Conversion Rate"
+  },
+  "regions": {
+    "Region_A": "North India (NCR)",
+    "Region_B": "South India (Bangalore/Chennai)",
+    "Region_C": "West India (Mumbai/Pune)",
+    "Region_D": "East India (Kolkata)"
+  },
+  "channels": {
+    "StoreType_A": "Mobile App",
+    "StoreType_B": "Desktop Web",
+    "StoreType_C": "Retail Outlet"
+  },
+  "events": {
+    "event:mobile_app_release_v5_4": "Release v5.4 Checkout Redesign"
+  },
+  "statuses": {
+    "COMPLETE_EVIDENCE": "Complete Evidence",
+    "CORROBORATING_SPIKE": "Corroborating Spike",
+    "CAUSED_BY": "Caused By",
+    "SUPPORTS": "Supports",
+    "CONTRADICTS": "Contradicts",
+    "PRECEDES": "Precedes",
+    "VALIDATED_BY": "Validated By",
+    "REJECTED_BY": "Rejected By",
+    "SIMILAR_TO": "Similar To",
+    "AFFECTS": "Affects",
+    "DERIVED_FROM": "Derived From",
+    "ANOMALOUS": "Anomalous",
+    "STABLE": "Stable",
+    "OPEN": "Operational",
+    "ACTIVE_IMPACT": "Active Impact",
+    "CORRELATED_EVENT": "Correlated Event",
+    "CONTROL_VALIDATED": "Control Validated"
+  }
+}

@@ -1,0 +1,9 @@
+ticket_id,created_at,region,channel,text
+ticket:44201,2026-08-12T10:15:00Z,North_India,Mobile_App,"Customer unable to complete checkout on the mobile app, payment step keeps failing after the latest update."
+ticket:44214,2026-08-12T14:02:00Z,North_India,Mobile_App,"App crashes at the final checkout screen since yesterday's app update, cart items disappear."
+ticket:44229,2026-08-13T09:40:00Z,North_India,Mobile_App,Checkout error message 'payment could not be processed' appearing repeatedly on mobile app after new release.
+ticket:44255,2026-08-13T18:20:00Z,North_India,Mobile_App,"Mobile app checkout page is stuck loading, unable to place order, very frustrating since the redesign."
+ticket:44301,2026-08-14T11:05:00Z,North_India,Mobile_App,"Getting repeated payment failures on the app checkout, tried multiple cards, all fail at the same step."
+ticket:44088,2026-08-05T08:30:00Z,South_India,Web,Website is slightly slower than usual during checkout but orders are going through fine.
+ticket:44340,2026-08-15T13:10:00Z,South_India,Web,"Noticed a competitor offering bigger discounts this week, considering switching my purchase there instead."
+ticket:44012,2026-07-22T09:00:00Z,East_India,Store,"In-store prices updated correctly after the recent price list change, no issues reported."

@@ -1,0 +1,13 @@
+{
+  "name": "evidenceiq-web-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev": "npm run dev --workspace=apps/api & npm run dev --workspace=apps/web"
+  }
+}
