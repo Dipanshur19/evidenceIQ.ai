@@ -23,7 +23,7 @@ CHANNEL_SHARE = {"Web": 0.35, "Mobile_App": 0.40, "Store": 0.25}
 DISRUPTION_START = pd.Timestamp("2026-08-12")
 COMPETITOR_PROMO_START = pd.Timestamp("2026-08-11")
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 

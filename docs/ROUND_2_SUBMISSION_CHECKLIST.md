@@ -26,7 +26,7 @@
 | **1** | **3–5 Connected KPIs across 2–3 Data Sources with different grains/cadences** | 🟢 **DONE** | • `app/config.py` (`METRIC_REGISTRY`)<br>• `data/revenue_daily.csv` (Daily batch ERP)<br>• `data/change_log.csv` (Event stream)<br>• `data/support_tickets.csv` (Realtime log) | Inspect `Regional Revenue`, `Order Volume`, `Checkout Conversion Rate`, and `Support Ticket Rate` connected in the KPI network. |
 | **2** | **Lightweight KPI / Semantic Contract covering definitions, formulas, lineage, access** | 🟢 **DONE** | • `app/config.py` (`SEMANTIC_CONTRACTS`)<br>• `evidenceiq-web/apps/web/src/pages/Contracts.jsx`<br>• `docs/master-track3-design-doc.md` (Sec 2) | Open `/contracts` in React or toggle "Semantic Contract" drawer in Streamlit to view JSON schemas, formulas, and data lineage. |
 | **3** | **At least 2 Personas receiving different narratives & recommended actions** | 🟢 **DONE** | • `app/llm_narration.py`<br>• `evidenceiq-web/apps/web/src/pages/Investigation.jsx`<br>• `app_pages/investigate.py` | Toggle between **Executive** (plain language, financial impact, risk badge, 1-click rollback) and **Analyst** ($z$-scores, commit SHAs, lineage). |
-| **4** | **1 Multi-Factor KPI Movement with known/simulated underlying drivers** | 🟢 **DONE** | • `app/driver_analysis.py`<br>• `app/hypothesis_engine.py`<br>• `generate_rossmann_data.py` | Store 101 revenue disruption (-67.96% drop) is decomposed into Volume Effect (-48.20%), Conversion Effect (-19.76%), and Mix Effect via Price-Volume-Mix waterfall. |
+| **4** | **1 Multi-Factor KPI Movement with known/simulated underlying drivers** | 🟢 **DONE** | • `app/driver_analysis.py`<br>• `app/hypothesis_engine.py`<br>• `scripts/generate_rossmann_data.py` | Store 101 revenue disruption (-67.96% drop) is decomposed into Volume Effect (-48.20%), Conversion Effect (-19.76%), and Mix Effect via Price-Volume-Mix waterfall. |
 | **5** | **1 Low-Confidence Scenario where the engine requests clarification or abstains** | 🟢 **DONE** | • `app/anomaly_detection.py`<br>• `app/orchestrator.py`<br>• `tests/test_pipeline.py` | Query normal baseline date `2026-06-02` or conflicting signals. Engine returns `status: "insufficient_data"`, confidence `< 0.450`, and abstains from guessing. |
 | **6** | **1 Sparse-History or Newly Launched KPI Scenario** | 🟢 **DONE** | • `app/anomaly_detection.py`<br>• `tests/test_pipeline.py` (`test_sparse_history_handling`) | Query region `Central_India` / `Store_999` (only 3 days history vs 14 required). Engine triggers `is_sparse_history = True`, flags low confidence, and suppresses $z$-score. |
 | **7** | **1 Role-Based Security or Entitlement Scenario** | 🟢 **DONE** | • `app/config.py`<br>• `app/orchestrator.py`<br>• `evidenceiq-web/apps/web/src/pages/Contracts.jsx` | Executive role automatically redacts developer git commits and raw SQL traces; Analyst role receives full telemetry and debug traces. |
@@ -92,7 +92,8 @@ Your repository already has all required documentation ready to convert to PDF o
 1. **Business Proposal:** `docs/business-proposal.md` (or `/proposal` in the React app)
 2. **Master Technical Design Document:** `docs/master-track3-design-doc.md` (or `/architecture`)
 3. **System Assumptions Log:** `docs/assumptions.md`
-4. **Slide Deck Content:** `docs/ROUND_1_SLIDE_DECK_CONTENT.md` (can be adapted with 1 click for Round 2)
+4. **Slide Deck Content:** `docs/ROUND_2_10_PAGE_PPT_DECK.md` (or `docs/business_proposal_deck.md`)
+5. **Demo Video Script:** `docs/demo_video_script.md` (or `docs/EvidenceIQ_AI_Demo_Video_Presentation_Script.pdf`)
 
 ### Action Item 4: Public GitHub Repository Polish
 - Commit all updated documents and test results.
@@ -104,9 +105,9 @@ Your repository already has all required documentation ready to convert to PDF o
 ## 🎯 Step-by-Step Priority Roadmap
 
 | Step | Task | Time Required | Owner |
-| :-: | :--- | :-: | :--- |
+| :-: | :--- | :--- | :--- |
 | **Step 1** | **Run full automated test verification** (`pytest -v`) | 2 min | Automated / Codebase |
 | **Step 2** | **Launch Streamlit / React app and do a dry run** of the demo flow | 10 min | Team |
-| **Step 3** | **Record 3-5 minute demo video** following `docs/ROUND_2_DEMO_VIDEO_SCRIPT.md` | 30 min | Team |
+| **Step 3** | **Record 3-5 minute demo video** following `docs/demo_video_script.md` | 30 min | Team |
 | **Step 4** | **Export docs & slide deck to PDF** for submission portal upload | 15 min | Team |
 | **Step 5** | **Submit on Accenture Challenge Portal** with video link + GitHub repo | 5 min | Team |

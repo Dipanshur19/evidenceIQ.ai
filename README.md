@@ -211,7 +211,7 @@ EvidenceIQ.ai includes native enterprise connectors and event listeners:
 
 ### 1. Clone & Set Up Python Environment
 ```bash
-git clone https://github.com/your-username/evidenceIQ.ai.git
+git clone https://github.com/Dipanshur19/evidenceIQ.ai.git
 cd evidenceIQ.ai
 
 # Create and activate virtual environment

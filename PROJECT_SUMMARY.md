@@ -13,7 +13,7 @@ The core goal of Track 3 is to build a **KPI Intelligence-to-Action Engine** tha
 
 ## 2. 🎯 What You Had To Do (Challenge Requirements)
 
-According to the official Accenture Round 2 Problem Statement document (`6a8bd90a9b7ff_accenture_innovation_challenge_round_2_detailed_problem_statements_final_1.pdf`), the prototype had to deliver:
+According to the official Accenture Round 2 Problem Statement document, the prototype had to deliver:
 
 1. **Deterministic Quantitative Foundation:** Detect and prioritize material KPI movements using statistical baselines (never relying on LLMs for math).
 2. **Multi-Source Data Reconciliation:** Connect metrics across fragmented systems (daily revenue CSV, change log events, support ticket logs).
@@ -28,9 +28,9 @@ According to the official Accenture Round 2 Problem Statement document (`6a8bd90
 ## 3. ⚡ What Has Been Done (Implementation Highlights)
 
 ### A. Environment & Local LLM Integration
-- Cloned and initialized the [`DrWrytaker/evidenceIQ.ai`](https://github.com/DrWrytaker/evidenceIQ.ai) repository into `d:\PLACEMENT2026\Projects\evidenceAI`.
+- Initialized and deployed the [`Dipanshur19/evidenceIQ.ai`](https://github.com/Dipanshur19/evidenceIQ.ai) repository.
 - Created isolated virtual environment (`.venv`) and installed all Python dependencies.
-- Configured local **Ollama** integration (`qwen2.5:1.5b` model on `D:\ollama_models` with 26.9 GB free space) to enable **100% free, offline execution** without cloud API keys or rate limits.
+- Configured local **Ollama** integration (`qwen2.5:1.5b`) to enable **100% free, offline execution** without cloud API keys or rate limits.
 
 ### B. Track 3 Feature Extensions
 - **4 Connected KPIs (`app/config.py`):** Extended metric registry to include `Regional Revenue`, `Order Volume`, `Checkout Conversion Rate`, and `Support Ticket Rate`.

@@ -31,8 +31,7 @@ STORE_TYPES = {
     108: "StoreType_A",
 }
 
-DAYS = pd.date_range("2026-06-01", "2026-08-20", freq="D")
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 
