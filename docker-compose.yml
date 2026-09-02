@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  evidenceiq-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: evidenceiq_platform
+    ports:
+      - "3001:3001"
+      - "8000:8000"
+    environment:
+      - FASTAPI_URL=http://127.0.0.1:8000
+      - PORT=3001
+      - EVIDENCEIQ_ENV=production
+    restart: unless-stopped

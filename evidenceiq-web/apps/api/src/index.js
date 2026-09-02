@@ -536,6 +536,20 @@ app.get("/api/whitelabel/presets", (req, res) =>
   proxyToFastApi(req, res, "/whitelabel/presets"),
 );
 
+// Serve production frontend assets if built
+const path = require("path");
+const fs = require("fs");
+const distPath = path.resolve(__dirname, "../../web/dist");
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/socket.io")) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+}
+
 server.listen(PORT, () => {
   console.log(
     `🚀 EvidenceIQ Engine running on http://localhost:${PORT} with 5-Model Balancer & FastAPI Gateway`,

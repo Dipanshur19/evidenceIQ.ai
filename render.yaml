@@ -1,0 +1,27 @@
+services:
+  # 1. FastAPI Python Causal Core Backend
+  - type: web
+    name: evidenceiq-fastapi-backend
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: EVIDENCEIQ_ENV
+        value: production
+
+  # 2. Node.js Gateway & Web UI Combined Service
+  - type: web
+    name: evidenceiq-web-platform
+    env: node
+    buildCommand: "cd evidenceiq-web/apps/web && npm install && npm run build && cd ../api && npm install"
+    startCommand: "node evidenceiq-web/apps/api/src/index.js"
+    envVars:
+      - key: NODE_VERSION
+        value: 20.10.0
+      - key: FASTAPI_URL
+        fromService:
+          type: web
+          name: evidenceiq-fastapi-backend
+          property: host
