@@ -37,9 +37,9 @@ def assemble_context(anomaly: dict, hypotheses: list, driver_result: dict) -> di
                 "scoring_breakdown": h["scoring_breakdown"],
                 "related_event": {
                     "id": event_node["id"],
-                    "description": event_node["attrs"]["description"],
-                    "timestamp": event_node["attrs"]["timestamp"],
-                    "provenance": event_node["attrs"]["provenance"],
+                    "description": event_node["attrs"].get("description", "") if isinstance(event_node.get("attrs"), dict) else "",
+                    "timestamp": event_node["attrs"].get("timestamp", "") if isinstance(event_node.get("attrs"), dict) else "",
+                    "provenance": event_node["attrs"].get("provenance", "change_log.csv") if isinstance(event_node.get("attrs"), dict) else "change_log.csv",
                 }
                 if event_node
                 else None,

@@ -87,6 +87,93 @@ CREATE TABLE IF NOT EXISTS audit_log (
     payload     TEXT,
     created_at  TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS rollback_execution (
+    id              TEXT PRIMARY KEY,
+    decision_id     TEXT NOT NULL,
+    target_system   TEXT NOT NULL,
+    action_type     TEXT NOT NULL,
+    payload         TEXT NOT NULL,
+    status          TEXT NOT NULL,
+    dispatched_at   TEXT NOT NULL,
+    completed_at    TEXT,
+    operator_id     TEXT NOT NULL,
+    audit_hash      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS recalibration_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    decision_id     TEXT NOT NULL,
+    edge_id         INTEGER NOT NULL,
+    from_id         TEXT NOT NULL,
+    to_id           TEXT NOT NULL,
+    old_weight      REAL NOT NULL,
+    new_weight      REAL NOT NULL,
+    reward          REAL NOT NULL,
+    delta           REAL NOT NULL,
+    rationale       TEXT,
+    recalibrated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS hypothesis_prior (
+    hypothesis_id   TEXT PRIMARY KEY,
+    prior_score     REAL NOT NULL,
+    sample_count    INTEGER DEFAULT 1,
+    last_updated    TEXT NOT NULL
+);
+
+-- Phase 4: Enterprise BI Fleet Scale, Contracts Marketplace & Compliance
+CREATE TABLE IF NOT EXISTS federated_business_unit (
+    bu_id           TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    region          TEXT NOT NULL,
+    tier            TEXT NOT NULL,
+    status          TEXT NOT NULL,
+    health_score    REAL NOT NULL,
+    kpis_count      INTEGER DEFAULT 0,
+    open_anomalies  INTEGER DEFAULT 0,
+    revenue_at_risk REAL DEFAULT 0.0,
+    api_endpoint    TEXT NOT NULL,
+    last_heartbeat  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS marketplace_contract (
+    contract_id     TEXT PRIMARY KEY,
+    metric_id       TEXT NOT NULL,
+    version         TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    publisher_bu    TEXT NOT NULL,
+    sla_tier        TEXT NOT NULL,
+    contract_schema TEXT NOT NULL,
+    subscriber_count INTEGER DEFAULT 0,
+    published_at    TEXT NOT NULL,
+    is_deprecated   INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS compliance_audit_pack (
+    dossier_id      TEXT PRIMARY KEY,
+    standard        TEXT NOT NULL,
+    status          TEXT NOT NULL,
+    compliance_score REAL NOT NULL,
+    audit_hash      TEXT NOT NULL,
+    controls_passed INTEGER NOT NULL,
+    controls_total  INTEGER NOT NULL,
+    payload         TEXT NOT NULL,
+    generated_at    TEXT NOT NULL,
+    auditor_identity TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS whitelabel_config (
+    tenant_id       TEXT PRIMARY KEY,
+    brand_name      TEXT NOT NULL,
+    preset_name     TEXT NOT NULL,
+    primary_color   TEXT NOT NULL,
+    secondary_color TEXT NOT NULL,
+    logo_symbol     TEXT NOT NULL,
+    engagement_code TEXT NOT NULL,
+    custom_domain   TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+);
 """
 
 

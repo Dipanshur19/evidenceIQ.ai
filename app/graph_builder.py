@@ -209,6 +209,13 @@ def ensure_complete_graph_topology():
                     (edge_type, from_id, to_id, conf, method, "graph_builder", now_iso)
                 )
 
+    # Phase 3: Integrate Cross-Domain KPI Nodes and Correlation Edges
+    try:
+        from .cross_domain_kpi import integrate_cross_domain_nodes_in_graph
+        integrate_cross_domain_nodes_in_graph()
+    except Exception:
+        pass
+
 
 def upsert_kpi_node(
     kpi_id: str,

@@ -94,6 +94,19 @@ async function proxyToFastApi(req, res, path) {
   }
 }
 
+// Root Gateway Info Endpoint
+app.get("/", (req, res) => {
+  res.json({
+    status: "online",
+    service: "EvidenceIQ.ai — Node.js Express API Gateway & Telemetry Server",
+    frontend_web_app: "http://localhost:3000",
+    fastapi_engine_docs: "http://localhost:8000/docs",
+    health_check: "/api/health",
+    message:
+      "This is the API Gateway service on port 3001. Open http://localhost:3000 in your browser to view the interactive Web UI.",
+  });
+});
+
 // 1. Health & Model Balancer Status Check
 app.get("/api/health", (req, res) => {
   res.json({
@@ -429,6 +442,99 @@ app.post("/api/anomalies/investigate", async (req, res) => {
     },
   });
 });
+
+// ============================================================================
+// Phase 3: Autonomous Recovery, RL Edge Recalibration & Cross-Domain KPIs
+// ============================================================================
+
+// 1. Automated CI/CD Rollback Hooks
+app.post("/api/recovery/trigger-rollback", (req, res) =>
+  proxyToFastApi(req, res, "/recovery/trigger-rollback"),
+);
+app.get("/api/recovery/history", (req, res) =>
+  proxyToFastApi(req, res, "/recovery/history"),
+);
+app.get("/api/recovery/verify", (req, res) =>
+  proxyToFastApi(req, res, "/recovery/verify"),
+);
+
+// 2. Decision Memory RL & Edge Recalibration
+app.post("/api/recalibration/run", (req, res) =>
+  proxyToFastApi(req, res, "/recalibration/run"),
+);
+app.get("/api/recalibration/history", (req, res) =>
+  proxyToFastApi(req, res, "/recalibration/history"),
+);
+app.get("/api/recalibration/priors", (req, res) =>
+  proxyToFastApi(req, res, "/recalibration/priors"),
+);
+
+// 3. Cross-Domain KPI Correlation
+app.get("/api/analytics/cross-domain/matrix", (req, res) =>
+  proxyToFastApi(req, res, "/analytics/cross-domain/matrix"),
+);
+app.get("/api/analytics/cross-domain/timeseries", (req, res) =>
+  proxyToFastApi(req, res, "/analytics/cross-domain/timeseries"),
+);
+app.get("/api/analytics/cross-domain/lead-lag", (req, res) =>
+  proxyToFastApi(req, res, "/analytics/cross-domain/lead-lag"),
+);
+
+// ============================================================================
+// Phase 4: Enterprise BI Fleet Scale, Marketplace, Compliance & White-Label
+// ============================================================================
+
+// 1. Federated Multi-Business-Unit Fleet Manager
+app.get("/api/fleet/units", (req, res) =>
+  proxyToFastApi(req, res, "/fleet/units"),
+);
+app.get("/api/fleet/overview", (req, res) =>
+  proxyToFastApi(req, res, "/fleet/overview"),
+);
+app.post("/api/fleet/register-unit", (req, res) =>
+  proxyToFastApi(req, res, "/fleet/register-unit"),
+);
+app.post("/api/fleet/ping", (req, res) =>
+  proxyToFastApi(req, res, "/fleet/ping"),
+);
+app.get("/api/fleet/isolation-check", (req, res) =>
+  proxyToFastApi(req, res, `/fleet/isolation-check?requesting_bu=${req.query.requesting_bu || ""}&target_bu=${req.query.target_bu || ""}`),
+);
+
+// 2. Cross-Enterprise Semantic Contract Marketplace
+app.get("/api/marketplace/contracts", (req, res) => {
+  const q = new URLSearchParams(req.query).toString();
+  proxyToFastApi(req, res, `/marketplace/contracts${q ? `?${q}` : ""}`);
+});
+app.post("/api/marketplace/publish", (req, res) =>
+  proxyToFastApi(req, res, "/marketplace/publish"),
+);
+app.post("/api/marketplace/subscribe", (req, res) =>
+  proxyToFastApi(req, res, "/marketplace/subscribe"),
+);
+
+// 3. Regulatory Compliance Reporting Automation (SOC-2, SOX 404, GDPR)
+app.get("/api/compliance/audit-packs", (req, res) =>
+  proxyToFastApi(req, res, "/compliance/audit-packs"),
+);
+app.post("/api/compliance/generate-pack", (req, res) =>
+  proxyToFastApi(req, res, "/compliance/generate-pack"),
+);
+app.get("/api/compliance/export/:dossier_id", (req, res) => {
+  const fmt = req.query.format || "json";
+  proxyToFastApi(req, res, `/compliance/export/${req.params.dossier_id}?format=${fmt}`);
+});
+
+// 4. White-Label Platform Licensing for Accenture Engagements
+app.get("/api/whitelabel/config", (req, res) =>
+  proxyToFastApi(req, res, "/whitelabel/config"),
+);
+app.post("/api/whitelabel/update", (req, res) =>
+  proxyToFastApi(req, res, "/whitelabel/update"),
+);
+app.get("/api/whitelabel/presets", (req, res) =>
+  proxyToFastApi(req, res, "/whitelabel/presets"),
+);
 
 server.listen(PORT, () => {
   console.log(

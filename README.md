@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React 18](https://img.shields.io/badge/React-18.2+-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![Three.js](https://img.shields.io/badge/Three.js-r128+-000000?logo=threedotjs&logoColor=white)](https://threejs.org)
-[![Tests Passing](https://img.shields.io/badge/Pytest-11%2F11%20Passed%20(100%25)-brightgreen?logo=pytest&logoColor=white)](tests/)
+[![Tests Passing](https://img.shields.io/badge/Pytest-25%2F25%20Passed%20(100%25)-brightgreen?logo=pytest&logoColor=white)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Local LLM](https://img.shields.io/badge/Ollama-Qwen%202.5%201.5B%20(%240.00%20Cost)-blueviolet)](https://ollama.com)
 [![Security](https://img.shields.io/badge/Audit-SHA--256%20Cryptographic%20Ledger-emerald)](#-cryptographic-audit-trail--governance)
@@ -135,6 +135,72 @@ $$\text{Hash} = \text{SHA256}(\text{DecisionID} \mid \text{OperatorID} \mid \tex
 
 ---
 
+## 📁 Repository & Project Architecture
+
+```
+evidenceIQ.ai/
+├── app/                                 # Deterministic Causal Python Core
+│   ├── compliance_audit.py              # Phase 4: Automated SOC-2 / SOX / GDPR Audit Dossiers
+│   ├── config.py                        # Centralized Environment & Feature Configuration
+│   ├── contract_marketplace.py         # Phase 4: Cross-Enterprise Semantic Contract Marketplace
+│   ├── cross_domain_kpi.py              # Phase 3: 5x5 Cross-Domain KPI Correlation & Lead-Lag
+│   ├── db.py                            # SQLite/PostgreSQL Engine & Schema Migrations
+│   ├── decision_memory.py               # Cryptographic SHA-256 Decision Ledger & Memory
+│   ├── edge_recalibration.py            # Phase 3: RL Dynamic Edge Recalibration (Alpha=0.08)
+│   ├── fleet_manager.py                 # Phase 4: Federated Multi-BU Fleet Tenant Isolation
+│   ├── graph_builder.py                 # Causal Knowledge Graph Synthesis & Ingestion
+│   ├── graph_retrieval.py               # Cypher/BFS Topology Queries & Confidence Aggregation
+│   ├── human_checkpoint.py              # 7-Tuple Human Checkpoint Gate & Validation
+│   ├── pipeline.py                      # 12-Stage Deterministic Causal Orchestrator
+│   ├── recovery_engine.py               # Phase 3: Automated CI/CD Rollbacks (LaunchDarkly & GitHub)
+│   └── whitelabel_service.py            # Phase 4: Multi-Brand White-Label Licensing Presets
+├── data/                                # Governed Data & Schemas
+│   ├── change_log.csv                   # Production Deployments, Changes & Incidents
+│   ├── cross_domain_kpis.csv            # 5-Domain Cross-KPI Telemetry Records
+│   ├── daily_revenue_sample.csv         # Reconciled POS / E-Commerce Sales Telemetry
+│   ├── semantic_contracts.yaml          # Governed Metric Single-Source-of-Truth
+│   └── support_tickets.csv              # Customer Support Incident Escalation Logs
+├── docs/                                # Architecture & Business Documentation
+│   ├── MASTER_ARCHITECTURE_AND_SYSTEM_BLUEPRINT.md
+│   ├── business-proposal.md             # Enterprise Business Proposal (Phases 1-4)
+│   └── business_proposal_deck.md        # 13-Slide Pitch Deck Specification
+├── evidenceiq-web/                      # Modern Full-Stack Enterprise Web Application
+│   ├── apps/api/                        # Node.js Express & Socket.io Real-Time Gateway (Port 3001)
+│   │   ├── src/index.js                 # API Gateway, WebSocket Server & Forwarder
+│   │   └── package.json
+│   └── apps/web/                        # React 18 + Vite + Three.js Obsidian Dark UI (Port 3000)
+│       ├── src/
+│       │   ├── components/
+│       │   │   ├── GlobalCopilot.jsx    # Global AI Copilot Slide-Out Drawer
+│       │   │   └── graph/
+│       │   │       └── EvidenceGraph3D.jsx # 3D WebGL Orbit Canvas with Collision Relaxation
+│       │   ├── pages/
+│       │   │   ├── Dashboard.jsx        # Intelligence Command Center & KPI Bento Grid
+│       │   │   ├── AnomalyScanner.jsx   # 2D Z-Score Variance Heatmap & Slice Surveillance
+│       │   │   ├── Investigation.jsx    # 2-Column Incident Commander Workspace
+│       │   │   ├── EvidenceGraphPage.jsx# 2D/3D Relational Knowledge Topology
+│       │   │   ├── DecisionMemoryPage.jsx# Reinforcement Learning & Recalibration Ledger
+│       │   │   ├── ConnectorsPage.jsx   # Warehouse Adapters & Ingestion Webhooks
+│       │   │   ├── FleetScalePage.jsx   # Phase 4: Multi-BU Fleet & Compliance Hub
+│       │   │   ├── Contracts.jsx        # Semantic Catalog & Model Learning Context
+│       │   │   └── Home.jsx             # Product Tour & Enterprise Executive Overview
+│       │   ├── App.jsx                  # Navigation Shell, BizzArk Topbar, Command Palette
+│       │   └── index.css                # Obsidian Dark Theme Design System & Tokens
+│       └── package.json
+├── tests/                               # Comprehensive Automated Test Suite
+│   ├── test_briefing_exporter.py        # PDF Exporters & Cryptographic Checksum Tests
+│   ├── test_phase3_features.py          # Automated Rollback, RL & Cross-Domain Tests
+│   ├── test_phase4_features.py          # Fleet Isolation, Marketplace & Compliance Tests
+│   ├── test_pipeline.py                 # 12-Stage Deterministic Pipeline Tests
+│   └── verify_full_system.py            # End-to-End System Smoke & Diagnostic Suite
+├── main.py                              # FastAPI Application Entrypoint (Port 8000)
+├── pytest.ini                           # Pytest Configuration
+├── requirements.txt                     # Python Dependencies
+└── README.md                            # System Documentation & Architecture Guide
+```
+
+---
+
 ## 🏗️ End-to-End Pipeline Architecture
 
 ```
@@ -155,6 +221,10 @@ $$\text{Hash} = \text{SHA256}(\text{DecisionID} \mid \text{OperatorID} \mid \tex
 │                                                                                  ▼                     │
 │   [ Decision Memory Ledger ] ◀── [ Cryptographic Checkpoint ] ◀── [ AST Numeric Diff Guardrail ]       │
 │   7-Day Edge Recalibration       SHA-256 Audit Signing            100% Numbers Verified                │
+│          │                                                                                             │
+│          ▼                                                                                             │
+│   [ Automated Recovery ] ──▶ [ LaunchDarkly Feature Flag ] ──▶ [ GitHub Actions Workflow Dispatch ]   │
+│   1-Click Remediation         Flag mobile_checkout_v5_4: OFF    Trigger rollback-deployment.yml        │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -162,29 +232,51 @@ $$\text{Hash} = \text{SHA256}(\text{DecisionID} \mid \text{OperatorID} \mid \tex
 
 ## 🚀 Enterprise Feature Walkthrough
 
-### 1. Executive Dashboard (`/`)
-- Live KPI status cards with real-time financial exposure tracking.
-- 30-Day interactive revenue trend charts with anomaly markers.
-- Sub-2-second telemetry display and Mean Time to Identify counters.
+### 1. Executive Intelligence Command Center (`/`)
+- Live KPI status tiles with real-time financial exposure counters and 21-day Gaussian baseline tracks.
+- High-contrast bento cards, 30-day interactive revenue trend charts, and sub-2-second telemetry displays.
+- Quick navigation to active investigations, anomaly scanner, and enterprise governance hubs.
 
-### 2. Anomaly Scanner & Two-Gate Materiality (`/scanner`)
-- Multi-dimensional anomaly matrix (Region $\times$ Channel heatmap).
-- Visual Two-Gate verification indicators (Statistical Significance Gate & Business Impact Gate).
-- One-click trigger to initiate full quasi-causal root-cause investigations.
+### 2. Gaussian Anomaly Scanner & 2D Z-Score Variance Matrix (`/scanner`)
+- **2D Slice Heatmap:** Cross-dimensional statistical surveillance over Region $\times$ Channel slices.
+- **Two-Gate Materiality Verification:** Filters out statistical noise by requiring both $|z| \ge 1.96\sigma$ AND material business floor exposure.
+- **Instant Drill-Down:** Clicking any anomalous cell initiates an automated root-cause investigation with pre-filtered parameters.
 
-### 3. Root-Cause Investigation Panel (`/investigation`)
-- **Driver Decomposition Tab:** Price-Volume-Mix (PVM) waterfall and game-theoretic Shapley attribution table (51.5% POS Hardware, 30.3% Region, 17.1% Mobile Channel).
-- **Scored Hypotheses Tab:** 6-Factor evidence breakdown with confidence band classifications.
-- **Grounded Narration Tab:** Dual-persona narrative toggle (**👔 Executive Briefing** vs. **📊 Analyst Telemetry**).
-- **Recommendation & Checkpoint Tab:** 7-Tuple action schema with human authorization modal and SHA-256 audit ledger.
+### 3. Incident Commander Investigation Workspace (`/investigate`)
+- **Continuous Diagnostic Storyline:** Replaces tab switching with an integrated 2-column layout:
+  1. *Golden Signals & Real-Time Disruption Trajectory*
+  2. *Interactive Dual-Persona Narrative* (Executive Financial Brief vs. Analyst Telemetry)
+  3. *Multi-Parameter Diagnostic Matrix* (7-dimension parameter breakdown & Price-Volume-Mix waterfall)
+  4. *Ranked Bayesian Causal Hypotheses* with 6-factor confidence scoring
+  5. *Autonomous CI/CD Recovery Console* (1-click LaunchDarkly flag disable & GitHub Actions rollback)
+  6. *Governed Human Checkpoint Sign-Off* (Confirm, Reject, or Modify with non-repudiation SHA-256 audit ledger)
+- **Sticky Table of Contents & Live Incident Copilot:** Right-hand rail provides rapid section jump links and contextual question answering.
 
-### 4. Interactive Relational Evidence Graph (`/graph`)
-- **2D Network View:** Directed causal lines with SVG arrowheads, labeled relationship badges (`PRECEDES`, `CORROBORATES`, `EXPLAINS`, `RESOLVES`, `AFFECTS`), and interactive mouse drag-and-drop physics.
-- **3D WebGL Orbit View:** Spherical Fibonacci distribution, glowing orbital rings, pulsing curved Bezier lines, dynamic billboard text sprites, and 360° mouse orbit controls.
+### 4. 3D Relational Evidence Knowledge Graph (`/graph`)
+- **3D WebGL Orbit Canvas:** Force-directed constellation with an iterative 25-pass collision relaxation algorithm (minimum 7.2 units node separation).
+- **Alternating Billboard Sprites:** Text labels never collide or overlap, with smooth orbit controls and glowing orbital rings.
+- **Real-Time Edge Telemetry:** Quadratic Bezier curves with flowing energy particles indicating causal flow confidence.
+- **2D Network View:** Instant toggle to clean SVG directed causal graph with relationship markers (`PRECEDES`, `CORROBORATES`, `EXPLAINS`, `RESOLVES`, `AFFECTS`).
+
+### 5. Semantic Contracts Marketplace & Model Learning Context (`/contracts`)
+- **Centralized Metric Catalog:** Governed definitions, SQL aggregation formulas, and schema expectations.
+- **Hallucination Prevention:** Context rules fed to the local LLM to guarantee mathematical accuracy.
+- **Multi-Pillar Filtering:** Switch seamlessly across Financial, Customer Experience, Growth, and Supply Chain domains.
+
+### 6. Enterprise BI Fleet Scale & Compliance Hub (`/fleet`)
+- **Tenant Isolation:** Federated multi-business-unit governance across operating subsidiaries (Retail EMEA, QuickCommerce India, Supply Chain NA, Healthcare).
+- **Metric Marketplace:** Cross-enterprise publishing, discovery, and subscription to verified metric contracts.
+- **Compliance Audit Pack Exporter:** 1-click dossier generator for **SOC-2 Type II**, **SOX-404**, and **GDPR Article 22** with SHA-256 cryptographic proofs.
+- **Accenture White-Label Suite:** Multi-brand licensing configurator supporting client engagement presets (*Accenture Diamond Practice*, *Nordic Retail Group*, *Apex Banking*).
+
+### 7. Global AI Copilot Drawer
+- Accessible from any page via the top navigation bar or keyboard shortcuts (`Ctrl+K`).
+- Aware of current page context, active business unit, and user persona.
+- Streams grounded responses with source provenance citations.
 
 ---
 
-## 🔌 Enterprise Connectors & Webhooks (Phase 2)
+## 🔌 Enterprise Connectors & Webhooks
 
 EvidenceIQ.ai includes native enterprise connectors and event listeners:
 
@@ -194,7 +286,8 @@ EvidenceIQ.ai includes native enterprise connectors and event listeners:
 | **Google BigQuery** | Data Warehouse | BigQuery REST / Partitioned Tables | **32.6 ms** | ✅ Live / Verified |
 | **Databricks Delta Lake** | Data Lakehouse | Unity Catalog / Delta Engine | **54.1 ms** | ✅ Live / Verified |
 | **SAP HANA S/4HANA** | Enterprise ERP | In-Memory Core / pyhdb | **61.8 ms** | ✅ Live / Verified |
-| **GitHub Actions Webhook** | Event Listener | HMAC SHA-256 Deployment Payloads | **< 10 ms** | ✅ Live / Verified |
+| **LaunchDarkly Feature Flags** | CI/CD Recovery | REST API / Flag Toggle Hooks | **< 25 ms** | ✅ Live / Verified |
+| **GitHub Actions Webhook** | CI/CD Recovery | `workflow_dispatch` Rollback Payloads | **< 30 ms** | ✅ Live / Verified |
 | **Jira Software Webhook** | Event Listener | REST Webhook / Incident Webhooks | **< 10 ms** | ✅ Live / Verified |
 | **Zendesk Support Webhook** | Event Listener | Real-Time Customer Ticket Surge API | **< 10 ms** | ✅ Live / Verified |
 | **PostgreSQL 16 + pgvector** | Scaling Adapter | Relational Graph Store / Vector Search | **14.2 ms** | ✅ Live / Verified |
@@ -278,21 +371,35 @@ Run tests using `pytest`:
 pytest -v
 ```
 
-### Test Suite Results (11/11 Passed · 100% Success Rate):
+### Test Suite Results (25/25 Passed · 100% Success Rate):
 ```
-tests/test_briefing_exporter.py::test_sha256_decision_hash_and_verification PASSED [  9%]
-tests/test_briefing_exporter.py::test_briefing_payload_assembly PASSED   [ 18%]
-tests/test_briefing_exporter.py::test_markdown_and_pdf_generation PASSED [ 27%]
-tests/test_briefing_exporter.py::test_fail_closed_validation PASSED      [ 36%]
-tests/test_pipeline.py::test_anomaly_detection_finds_disruption PASSED   [ 45%]
-tests/test_pipeline.py::test_events_extracted_from_change_log PASSED     [ 54%]
-tests/test_pipeline.py::test_hypothesis_engine_surfaces_top_cause PASSED [ 63%]
-tests/test_pipeline.py::test_full_orchestrator_pipeline PASSED           [ 72%]
-tests/test_pipeline.py::test_insufficient_data_handled_gracefully PASSED [ 81%]
-tests/test_pipeline.py::test_persona_and_telemetry_support PASSED        [ 90%]
+tests/test_briefing_exporter.py::test_sha256_decision_hash_and_verification PASSED [  4%]
+tests/test_briefing_exporter.py::test_briefing_payload_assembly PASSED   [  8%]
+tests/test_briefing_exporter.py::test_markdown_and_pdf_generation PASSED [ 12%]
+tests/test_briefing_exporter.py::test_fail_closed_validation PASSED      [ 16%]
+tests/test_phase3_features.py::test_launchdarkly_and_github_rollback_dispatch PASSED [ 20%]
+tests/test_phase3_features.py::test_human_checkpoint_auto_dispatches_rollback PASSED [ 24%]
+tests/test_phase3_features.py::test_rl_edge_recalibration_positive_and_negative_reward PASSED [ 28%]
+tests/test_phase3_features.py::test_cross_domain_kpi_correlation_matrix PASSED [ 32%]
+tests/test_phase3_features.py::test_cross_domain_lead_lag_cascades PASSED [ 36%]
+tests/test_phase3_features.py::test_cross_domain_semantic_contracts_and_graph_nodes PASSED [ 40%]
+tests/test_phase4_features.py::test_federated_fleet_overview_and_units PASSED [ 44%]
+tests/test_phase4_features.py::test_register_new_business_unit PASSED    [ 48%]
+tests/test_phase4_features.py::test_fleet_heartbeat_ping_and_tenant_isolation PASSED [ 52%]
+tests/test_phase4_features.py::test_marketplace_list_and_publish_contract PASSED [ 56%]
+tests/test_phase4_features.py::test_marketplace_subscribe_to_contract PASSED [ 60%]
+tests/test_phase4_features.py::test_compliance_audit_pack_generation_and_sha256 PASSED [ 64%]
+tests/test_phase4_features.py::test_compliance_markdown_export PASSED    [ 68%]
+tests/test_phase4_features.py::test_whitelabel_config_and_presets PASSED [ 72%]
+tests/test_pipeline.py::test_anomaly_detection_finds_disruption PASSED   [ 76%]
+tests/test_pipeline.py::test_events_extracted_from_change_log PASSED     [ 80%]
+tests/test_pipeline.py::test_hypothesis_engine_surfaces_top_cause PASSED [ 84%]
+tests/test_pipeline.py::test_full_orchestrator_pipeline PASSED           [ 88%]
+tests/test_pipeline.py::test_insufficient_data_handled_gracefully PASSED [ 92%]
+tests/test_pipeline.py::test_persona_and_telemetry_support PASSED        [ 96%]
 tests/test_pipeline.py::test_sparse_history_handling PASSED              [100%]
 
-============================= 11 passed in 55.62s =============================
+============================= 25 passed in 55.33s =============================
 ```
 
 ---

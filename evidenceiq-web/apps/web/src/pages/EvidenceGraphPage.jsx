@@ -71,7 +71,7 @@ export default function EvidenceGraphPage() {
     try {
       const typesParam = selectedTypes.join(",");
       const res = await fetch(
-        `http://localhost:3001/api/graph/data?node_types=${typesParam}&min_confidence=${minConfidence}`
+        `/api/graph/data?node_types=${typesParam}&min_confidence=${minConfidence}`
       );
       const data = await res.json();
       setNodes(data.nodes || []);
@@ -542,14 +542,71 @@ export default function EvidenceGraphPage() {
                     </div>
                   ))}
               </div>
+
+              {/* Connected Causal Pathways & RL Confidence */}
+              {(() => {
+                const connected = edges.filter(
+                  (e) => (e.source || e.from_id) === selectedNode.id || (e.target || e.to_id) === selectedNode.id
+                );
+                if (!connected.length) return null;
+                return (
+                  <div style={{ marginTop: "18px" }}>
+                    <div style={{ fontSize: "0.72rem", color: "#9E9EB2", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>
+                      Connected Pathways & Edge Confidence ({connected.length})
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "160px", overflowY: "auto" }}>
+                      {connected.map((edge, idx) => {
+                        const isOutgoing = (edge.source || edge.from_id) === selectedNode.id;
+                        const otherId = isOutgoing ? (edge.target || edge.to_id) : (edge.source || edge.from_id);
+                        const rel = edge.relationship || edge.edge_type || "PRECEDES";
+                        const conf = edge.confidence ?? 0.75;
+                        return (
+                          <div
+                            key={idx}
+                            style={{
+                              background: "rgba(255, 255, 255, 0.04)",
+                              border: "1px solid rgba(255, 255, 255, 0.08)",
+                              borderRadius: "6px",
+                              padding: "8px 10px",
+                              fontSize: "0.74rem",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ color: EDGE_COLORS[rel] || "#8B5CF6", fontWeight: 700, fontFamily: "var(--font-mono)", fontSize: "0.68rem" }}>
+                                {isOutgoing ? "→" : "←"} {rel}
+                              </span>
+                              <span style={{ color: "#F4F4F6", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>
+                                {String(otherId).slice(0, 24)}...
+                              </span>
+                            </div>
+                            <span
+                              style={{
+                                color: conf >= 0.8 ? "#10B981" : "#A78BFA",
+                                fontWeight: 700,
+                                fontFamily: "var(--font-mono)",
+                                fontSize: "0.72rem",
+                              }}
+                            >
+                              {(conf * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Cryptographic SHA-256 Provenance Box */}
-            <div style={{ marginTop: "24px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ marginTop: "24px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#10B981", fontSize: "0.72rem", fontWeight: 700, marginBottom: "4px" }}>
                 <ShieldCheck size={14} /> Verified Graph Provenance
               </div>
-              <p style={{ margin: 0, fontSize: "0.68rem", color: "#71717A", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
+              <p style={{ margin: 0, fontSize: "0.68rem", color: "#9E9EB2", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
                 SHA-256: e8b9f4a1c0d2e3f5998124b893a7c6f0...
               </p>
             </div>

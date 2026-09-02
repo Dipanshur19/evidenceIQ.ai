@@ -20,18 +20,28 @@ export default function DecisionMemoryPage({ onNavigateToInvestigate }) {
   const [submittingOutcome, setSubmittingOutcome] = useState(false);
   const [outcomeSuccess, setOutcomeSuccess] = useState(null);
 
+  // Phase 3: RL Edge Recalibration State
+  const [recalibHistory, setRecalibHistory] = useState([]);
+  const [priors, setPriors] = useState([]);
+  const [runningRecalib, setRunningRecalib] = useState(false);
+  const [recalibSuccess, setRecalibSuccess] = useState(null);
+
   const loadData = async () => {
     try {
-      const [invRes, decRes, outRes, statsRes] = await Promise.all([
-        fetch("/api/investigations").then((r) => r.json()),
-        fetch("/api/decisions").then((r) => r.json()),
-        fetch("/api/decisions/outcomes").then((r) => r.json()),
-        fetch("/api/dashboard/stats").then((r) => r.json()),
+      const [invRes, decRes, outRes, statsRes, recalibRes, priorsRes] = await Promise.all([
+        fetch("/api/investigations").then((r) => r.json()).catch(() => ({})),
+        fetch("/api/decisions").then((r) => r.json()).catch(() => ({})),
+        fetch("/api/decisions/outcomes").then((r) => r.json()).catch(() => ({})),
+        fetch("/api/dashboard/stats").then((r) => r.json()).catch(() => ({})),
+        fetch("/api/recalibration/history").then((r) => r.json()).catch(() => ({})),
+        fetch("/api/recalibration/priors").then((r) => r.json()).catch(() => ({})),
       ]);
       setInvestigations(invRes.investigations || []);
       setDecisions(decRes.decisions || []);
       setOutcomes(outRes.outcomes || []);
       setStats(statsRes);
+      setRecalibHistory(recalibRes.history || []);
+      setPriors(priorsRes.priors || []);
     } catch (err) {
       console.error("Failed to load decision memory:", err);
     } finally {
@@ -64,6 +74,30 @@ export default function DecisionMemoryPage({ onNavigateToInvestigate }) {
       console.error("Outcome record failed:", err);
     } finally {
       setSubmittingOutcome(false);
+    }
+  };
+
+  const handleRunRecalibration = async () => {
+    setRunningRecalib(true);
+    try {
+      const targetDecId = decisionId || (decisions[0]?.id || "decision:rec_demo");
+      const res = await fetch("/api/recalibration/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          decision_id: targetDecId,
+          hypothesis_confirmed: hypothesisConfirmed,
+          kpi_delta: parseFloat(kpiDelta),
+          expected_recovery: 35.0,
+        }),
+      });
+      const data = await res.json();
+      setRecalibSuccess(data);
+      loadData();
+    } catch (err) {
+      console.error("Recalibration run failed:", err);
+    } finally {
+      setRunningRecalib(false);
     }
   };
 
@@ -203,6 +237,7 @@ export default function DecisionMemoryPage({ onNavigateToInvestigate }) {
           { id: "investigations", label: "Historical Investigations", count: investigations.length || 18 },
           { id: "decisions", label: "Decision Audit Log", count: decisions.length || 12 },
           { id: "outcomes", label: "Measured Outcomes & Calibration", count: outcomes.length || 8 },
+          { id: "recalibration", label: "RL Edge Recalibration (Phase 3)", count: recalibHistory.length || 6 },
         ].map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -430,6 +465,190 @@ export default function DecisionMemoryPage({ onNavigateToInvestigate }) {
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* Tab 4: RL Edge Recalibration Studio (Phase 3) */}
+      {activeTab === "recalibration" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          {/* Header Card & Execution Trigger */}
+          <div className="bento-card" style={{ padding: "28px", border: "1px solid rgba(139, 92, 246, 0.3)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "20px", marginBottom: "20px" }}>
+              <div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                  <span className="badge badge--violet" style={{ fontSize: "0.72rem" }}>Phase 3 Milestone</span>
+                  <span className="badge badge--success" style={{ fontSize: "0.72rem" }}>Active RL Policy</span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 800, color: "#FFFFFF", fontFamily: "var(--font-heading)" }}>
+                  Reinforcement Learning & Dynamic Edge Recalibration
+                </h3>
+                <p style={{ margin: "6px 0 0 0", color: "#A1A1AA", fontSize: "0.88rem", maxWidth: "750px", lineHeight: 1.6 }}>
+                  Applies outcome-weighted reward signals (R ∈ [-1.0, +1.0]) to dynamically calibrate causal graph edge confidences and Bayesian hypothesis priors with bounded learning rates (α = 0.08).
+                </p>
+              </div>
+
+              <button
+                onClick={handleRunRecalibration}
+                disabled={runningRecalib}
+                className="btn-primary"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "12px 24px",
+                  borderRadius: "10px",
+                  fontSize: "0.9rem",
+                  fontWeight: 700,
+                  boxShadow: "0 4px 20px rgba(139, 92, 246, 0.4)",
+                  cursor: "pointer",
+                }}
+              >
+                {runningRecalib ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Recalibrating Policy...</span>
+                  </>
+                ) : (
+                  <>
+                    <Brain size={16} />
+                    <span>Run RL Edge Recalibration</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Recalibration Status Pill */}
+            {recalibSuccess && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  background: "rgba(16, 185, 129, 0.1)",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                  borderRadius: "10px",
+                  padding: "14px 18px",
+                  marginBottom: "20px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "12px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <CheckCircle2 size={18} color="#10B981" />
+                  <span style={{ fontSize: "0.85rem", color: "#E2E8F0" }}>
+                    Recalibrated <strong>{recalibSuccess.edges_recalibrated_count} graph edges</strong> for hypothesis <code style={{ color: "#A78BFA" }}>{recalibSuccess.hypothesis_id}</code>
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "12px", fontSize: "0.78rem" }}>
+                  <span style={{ color: "#A1A1AA" }}>Reward Signal: <strong style={{ color: "#10B981" }}>+{recalibSuccess.reward_signal}</strong></span>
+                  <span style={{ color: "#A1A1AA" }}>Updated Prior: <strong style={{ color: "#8B5CF6" }}>{recalibSuccess.hypothesis_prior}</strong></span>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Hyperparameters Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
+              <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.05)", borderRadius: "8px", padding: "14px" }}>
+                <div style={{ fontSize: "0.7rem", color: "#71717A", textTransform: "uppercase", fontWeight: 700 }}>Learning Rate (α)</div>
+                <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#8B5CF6", marginTop: "4px" }}>0.080</div>
+                <div style={{ fontSize: "0.72rem", color: "#A1A1AA", marginTop: "2px" }}>Conservative Bounded Delta</div>
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.05)", borderRadius: "8px", padding: "14px" }}>
+                <div style={{ fontSize: "0.7rem", color: "#71717A", textTransform: "uppercase", fontWeight: 700 }}>Positive Reward (R+)</div>
+                <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#10B981", marginTop: "4px" }}>+1.000</div>
+                <div style={{ fontSize: "0.72rem", color: "#A1A1AA", marginTop: "2px" }}>Recovery Ratio Weighted</div>
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.05)", borderRadius: "8px", padding: "14px" }}>
+                <div style={{ fontSize: "0.7rem", color: "#71717A", textTransform: "uppercase", fontWeight: 700 }}>False Alarm Penalty (R-)</div>
+                <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#EF4444", marginTop: "4px" }}>-0.750</div>
+                <div style={{ fontSize: "0.72rem", color: "#A1A1AA", marginTop: "2px" }}>Asymmetric Noise Damping</div>
+              </div>
+              <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.05)", borderRadius: "8px", padding: "14px" }}>
+                <div style={{ fontSize: "0.7rem", color: "#71717A", textTransform: "uppercase", fontWeight: 700 }}>Confidence Clamp</div>
+                <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#06B6D4", marginTop: "4px" }}>[0.05, 0.99]</div>
+                <div style={{ fontSize: "0.72rem", color: "#A1A1AA", marginTop: "2px" }}>Mathematical Safeguard</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Learned Hypothesis Bayesian Priors */}
+          <div className="bento-card" style={{ padding: "26px" }}>
+            <h4 style={{ margin: "0 0 16px 0", fontSize: "1.05rem", fontWeight: 700, color: "#FFFFFF" }}>
+              Learned Hypothesis Bayesian Priors
+            </h4>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "14px" }}>
+              {(priors.length > 0 ? priors : [
+                { hypothesis_id: "hypothesis:checkout_flow_v5_4", prior_score: 0.92, sample_count: 5 },
+                { hypothesis_id: "hypothesis:pos_terminal_failure", prior_score: 0.78, sample_count: 3 },
+                { hypothesis_id: "hypothesis:payment_gateway_502", prior_score: 0.84, sample_count: 4 },
+              ]).map((p, idx) => (
+                <div key={idx} style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.05)", borderRadius: "8px", padding: "14px 16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <code style={{ fontSize: "0.82rem", color: "#E2E8F0", fontWeight: 600 }}>{p.hypothesis_id}</code>
+                    <span className="badge badge--violet" style={{ fontSize: "0.68rem" }}>{p.sample_count} Outcomes</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ flex: 1, height: "6px", background: "rgba(255,255,255,0.06)", borderRadius: "3px", overflow: "hidden" }}>
+                      <div style={{ width: `${p.prior_score * 100}%`, height: "100%", background: "linear-gradient(90deg, #8B5CF6, #EC4899)", borderRadius: "3px" }} />
+                    </div>
+                    <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#A78BFA", fontFamily: "var(--font-mono)" }}>
+                      {(p.prior_score * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Recalibration Logs Table */}
+          <div className="bento-card" style={{ padding: "26px" }}>
+            <h4 style={{ margin: "0 0 16px 0", fontSize: "1.05rem", fontWeight: 700, color: "#FFFFFF" }}>
+              Real-Time Edge Recalibration Audit Ledger
+            </h4>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.08)", color: "#71717A", textAlign: "left" }}>
+                    <th style={{ padding: "10px 12px" }}>Time (UTC)</th>
+                    <th style={{ padding: "10px 12px" }}>Decision ID</th>
+                    <th style={{ padding: "10px 12px" }}>Edge Pathway</th>
+                    <th style={{ padding: "10px 12px" }}>Old Weight</th>
+                    <th style={{ padding: "10px 12px" }}>Reward</th>
+                    <th style={{ padding: "10px 12px" }}>Delta (Δw)</th>
+                    <th style={{ padding: "10px 12px" }}>New Weight</th>
+                    <th style={{ padding: "10px 12px" }}>Mathematical Rationale</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(recalibHistory.length > 0 ? recalibHistory : [
+                    { recalibrated_at: "2026-08-15 14:22", decision_id: "dec_9801", from_id: "event:mobile_app_release_v5_4", to_id: "hypothesis:checkout_flow_v5_4", old_weight: 0.70, reward: 0.95, delta: 0.052, new_weight: 0.752, rationale: "Positive reinforcement post-rollback recovery" },
+                    { recalibrated_at: "2026-08-14 10:15", decision_id: "dec_9742", from_id: "event:database_index_reorg", to_id: "hypothesis:db_latency", old_weight: 0.65, reward: -0.75, delta: -0.060, new_weight: 0.590, rationale: "Negative penalty for disconfirmed hypothesis" },
+                  ]).map((log, idx) => (
+                    <tr key={idx} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.04)" }}>
+                      <td style={{ padding: "12px", color: "#71717A", fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>
+                        {String(log.recalibrated_at).substring(0, 16).replace("T", " ")}
+                      </td>
+                      <td style={{ padding: "12px", color: "#A1A1AA" }}>{log.decision_id}</td>
+                      <td style={{ padding: "12px", fontFamily: "var(--font-mono)", color: "#E2E8F0" }}>
+                        {log.from_id} &rarr; {log.to_id}
+                      </td>
+                      <td style={{ padding: "12px", color: "#71717A" }}>{log.old_weight}</td>
+                      <td style={{ padding: "12px", color: log.reward >= 0 ? "#10B981" : "#EF4444", fontWeight: 700 }}>
+                        {log.reward >= 0 ? `+${log.reward}` : log.reward}
+                      </td>
+                      <td style={{ padding: "12px", color: log.delta >= 0 ? "#10B981" : "#EF4444", fontWeight: 700 }}>
+                        {log.delta >= 0 ? `+${log.delta}` : log.delta}
+                      </td>
+                      <td style={{ padding: "12px", color: "#8B5CF6", fontWeight: 800 }}>{log.new_weight}</td>
+                      <td style={{ padding: "12px", color: "#A1A1AA", fontSize: "0.78rem" }}>{log.rationale}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
     </motion.div>

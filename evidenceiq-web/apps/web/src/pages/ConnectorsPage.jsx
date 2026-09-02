@@ -60,7 +60,7 @@ export default function ConnectorsPage() {
 
   const fetchConnectors = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/connectors/list");
+      const res = await fetch("/api/connectors/list");
       const data = await res.json();
       if (data.connectors) setConnectors(data.connectors);
     } catch (e) {
@@ -70,7 +70,7 @@ export default function ConnectorsPage() {
 
   const fetchWebhookHistory = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/webhooks/history");
+      const res = await fetch("/api/webhooks/history");
       const data = await res.json();
       if (data.history) setWebhookHistory(data.history);
     } catch (e) {
@@ -80,7 +80,7 @@ export default function ConnectorsPage() {
 
   const fetchDbStatus = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/db-adapters/status");
+      const res = await fetch("/api/db-adapters/status");
       const data = await res.json();
       setDbStatus(data);
     } catch (e) {
@@ -90,7 +90,7 @@ export default function ConnectorsPage() {
 
   const fetchTenants = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/tenants");
+      const res = await fetch("/api/tenants");
       const data = await res.json();
       if (data.tenants) setTenants(data.tenants);
     } catch (e) {
@@ -101,7 +101,7 @@ export default function ConnectorsPage() {
   const handleTestConnection = async (connectorId) => {
     setTestingConnectorId(connectorId);
     try {
-      const res = await fetch("http://localhost:3001/api/connectors/test", {
+      const res = await fetch("/api/connectors/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ connector_id: connectorId })
@@ -127,7 +127,7 @@ export default function ConnectorsPage() {
   const handleIntrospectSchema = async (connectorId) => {
     setIntrospectingId(connectorId);
     try {
-      const res = await fetch(`http://localhost:3001/api/connectors/introspect?connector_id=${connectorId}`);
+      const res = await fetch(`/api/connectors/introspect?connector_id=${connectorId}`);
       const data = await res.json();
       setSchemaDetails(prev => ({ ...prev, [connectorId]: data }));
       addToast({
@@ -176,7 +176,7 @@ export default function ConnectorsPage() {
     }
 
     try {
-      const res = await fetch(`http://localhost:3001/api/webhooks/${source}`, {
+      const res = await fetch(`/api/webhooks/${source}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -202,7 +202,7 @@ export default function ConnectorsPage() {
   const handleSwitchDbEngine = async (engineId) => {
     setSwitchingDb(true);
     try {
-      const res = await fetch("http://localhost:3001/api/db-adapters/switch", {
+      const res = await fetch("/api/db-adapters/switch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ engine_id: engineId })
@@ -245,14 +245,14 @@ export default function ConnectorsPage() {
                 margin: 0,
                 fontSize: "1.85rem",
                 fontWeight: 800,
-                color: "#FFFFFF",
+                color: "var(--color-text, #0F172A)",
                 letterSpacing: "-0.03em",
                 fontFamily: "var(--font-heading)",
               }}
             >
               Enterprise Connectors & <span className="text-gradient-purple">Real-Time Ingestion Hub</span>
             </h1>
-            <p style={{ margin: "6px 0 0 0", color: "#A1A1AA", fontSize: "0.925rem" }}>
+            <p style={{ margin: "6px 0 0 0", color: "#475569", fontSize: "0.925rem" }}>
               Connect native enterprise data warehouses (Snowflake, BigQuery, Databricks, SAP), ingest real-time CI/CD and incident webhooks, and scale property graphs across distributed databases.
             </p>
           </div>

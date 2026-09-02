@@ -23,7 +23,7 @@ const EDGE_HEX_COLORS = {
 export default function EvidenceGraph3D({ nodes = [], edges = [], onSelectNode }) {
   const mountRef = useRef(null);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
-  const controlsRef = useRef({ zoom: 24, rotationX: 0.2, rotationY: 0.4 });
+  const controlsRef = useRef({ zoom: 34, rotationX: 0.15, rotationY: 0.35 });
 
   useEffect(() => {
     const container = mountRef.current;
@@ -47,48 +47,135 @@ export default function EvidenceGraph3D({ nodes = [], edges = [], onSelectNode }
     scene.add(graphGroup);
 
     // Ambient and Directional Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     scene.add(ambientLight);
 
     const dirLight1 = new THREE.DirectionalLight(0x818cf8, 1.8);
-    dirLight1.position.set(15, 25, 20);
+    dirLight1.position.set(20, 30, 25);
     scene.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0xa78bfa, 1.0);
-    dirLight2.position.set(-15, -20, -15);
+    const dirLight2 = new THREE.DirectionalLight(0xa78bfa, 1.2);
+    dirLight2.position.set(-20, -25, -20);
     scene.add(dirLight2);
 
-    // 2. Node Position Calculation (3D Spherical Force Layout)
+    // 2. Node Position Calculation (Semantic Constellation + 3D Physics Repulsion)
     const nodeMeshes = new Map();
     const clickableObjects = [];
     const nodePositions = new Map();
 
-    const totalNodes = Math.max(nodes.length, 1);
-    nodes.forEach((node, idx) => {
-      // Compute spherical Fibonacci distribution for optimal spacing in 3D
-      const phi = Math.acos(-1 + (2 * idx) / totalNodes);
-      const theta = Math.sqrt(totalNodes * Math.PI) * phi;
-      const radius = 9.5 + (idx % 3) * 2.2;
-
-      // Special cluster positioning: KPIs in center, Events left, Evidence right, Decisions top
-      let x = radius * Math.cos(theta) * Math.sin(phi);
-      let y = radius * Math.sin(theta) * Math.sin(phi);
-      let z = radius * Math.cos(phi) * 0.8;
-
-      if (node.node_type === "KPI") {
-        x *= 0.4; y *= 0.4; z *= 0.4;
-      } else if (node.node_type === "Event") {
-        x = -7.5 + (idx % 2) * 2;
-      } else if (node.node_type === "Evidence") {
-        x = 7.5 - (idx % 2) * 2;
-      } else if (node.node_type === "Decision") {
-        y = -6.5;
+    // Group nodes by type for distinct semantic coordinates
+    const groupedNodes = {
+      KPI: [],
+      Event: [],
+      Evidence: [],
+      Hypothesis: [],
+      Decision: [],
+      Entity: [],
+    };
+    nodes.forEach((n) => {
+      if (groupedNodes[n.node_type]) {
+        groupedNodes[n.node_type].push(n);
+      } else {
+        groupedNodes.Entity.push(n);
       }
+    });
 
-      nodePositions.set(node.id, new THREE.Vector3(x, y, z));
+    // 1. Initial semantic distribution with ample spacing
+    groupedNodes.KPI.forEach((node, idx) => {
+      const total = Math.max(groupedNodes.KPI.length, 1);
+      const angle = (idx / total) * Math.PI * 2;
+      const radius = 8.5;
+      nodePositions.set(
+        node.id,
+        new THREE.Vector3(
+          radius * Math.cos(angle),
+          idx % 2 === 0 ? 1.5 : -1.5,
+          radius * Math.sin(angle)
+        )
+      );
+    });
 
+    groupedNodes.Event.forEach((node, idx) => {
+      nodePositions.set(
+        node.id,
+        new THREE.Vector3(
+          -15.0 - idx * 2.5,
+          3.5 + (idx % 3) * 3.5,
+          idx % 2 === 0 ? 5 : -5
+        )
+      );
+    });
+
+    groupedNodes.Evidence.forEach((node, idx) => {
+      nodePositions.set(
+        node.id,
+        new THREE.Vector3(
+          15.0 + idx * 2.5,
+          3.5 + (idx % 3) * 3.5,
+          idx % 2 === 0 ? 5 : -5
+        )
+      );
+    });
+
+    groupedNodes.Hypothesis.forEach((node, idx) => {
+      nodePositions.set(
+        node.id,
+        new THREE.Vector3(
+          -5.0 + idx * 5.0,
+          11.0 + (idx % 2) * 3.0,
+          idx % 2 === 0 ? 4 : -4
+        )
+      );
+    });
+
+    groupedNodes.Decision.forEach((node, idx) => {
+      nodePositions.set(
+        node.id,
+        new THREE.Vector3(
+          -4.0 + idx * 4.5,
+          -11.5 - (idx % 2) * 2.5,
+          3.0
+        )
+      );
+    });
+
+    groupedNodes.Entity.forEach((node, idx) => {
+      nodePositions.set(
+        node.id,
+        new THREE.Vector3(
+          -7.0 + idx * 4.5,
+          0,
+          -13.0
+        )
+      );
+    });
+
+    // 2. Iterative 3D Repulsion Pass (Force-Directed Relaxation)
+    // Enforce a strict minimum distance of 7.2 units between ANY two nodes
+    const minDistance = 7.2;
+    for (let step = 0; step < 25; step++) {
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const p1 = nodePositions.get(nodes[i].id);
+          const p2 = nodePositions.get(nodes[j].id);
+          if (!p1 || !p2) continue;
+          const delta = new THREE.Vector3().subVectors(p1, p2);
+          const dist = delta.length();
+          if (dist < minDistance && dist > 0.001) {
+            const push = (minDistance - dist) * 0.5;
+            delta.normalize().multiplyScalar(push);
+            p1.add(delta);
+            p2.sub(delta);
+          }
+        }
+      }
+    }
+
+    // 3. Render 3D Spheres & Crisp Labels
+    nodes.forEach((node, idx) => {
+      const pos = nodePositions.get(node.id) || new THREE.Vector3(0, 0, 0);
       const hexColor = NODE_HEX_COLORS[node.node_type] || 0x8b5cf6;
-      const sphereRadius = node.node_type === "KPI" ? 1.4 : node.node_type === "Hypothesis" ? 1.2 : 0.95;
+      const sphereRadius = node.node_type === "KPI" ? 1.35 : node.node_type === "Hypothesis" ? 1.15 : 0.95;
 
       // Node Sphere
       const geo = new THREE.SphereGeometry(sphereRadius, 32, 32);
@@ -101,11 +188,11 @@ export default function EvidenceGraph3D({ nodes = [], edges = [], onSelectNode }
       });
 
       const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(x, y, z);
+      mesh.position.copy(pos);
       mesh.userData = { node };
 
       // Halo Orbital Ring
-      const ringGeo = new THREE.RingGeometry(sphereRadius * 1.3, sphereRadius * 1.5, 32);
+      const ringGeo = new THREE.RingGeometry(sphereRadius * 1.25, sphereRadius * 1.45, 32);
       const ringMat = new THREE.MeshBasicMaterial({
         color: hexColor,
         side: THREE.DoubleSide,
@@ -120,24 +207,26 @@ export default function EvidenceGraph3D({ nodes = [], edges = [], onSelectNode }
       canvas.width = 380;
       canvas.height = 70;
       const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
-      ctx.roundRect(10, 10, 360, 50, 12);
+      ctx.fillStyle = "rgba(10, 10, 15, 0.92)";
+      ctx.roundRect(8, 8, 364, 54, 12);
       ctx.fill();
       ctx.strokeStyle = `#${hexColor.toString(16).padStart(6, "0")}`;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
       ctx.fillStyle = "#FFFFFF";
       ctx.font = "bold 20px Inter, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      const displayTxt = (node.label || node.id).slice(0, 26);
+      const displayTxt = (node.label || node.id).slice(0, 24);
       ctx.fillText(displayTxt, 190, 35);
 
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(spriteMat);
-      sprite.position.set(0, sphereRadius + 1.2, 0);
-      sprite.scale.set(4.5, 0.9, 1);
+      // Alternate label vertical placement to eliminate adjacent collisions
+      const yOffset = idx % 2 === 0 ? sphereRadius + 1.25 : -(sphereRadius + 1.25);
+      sprite.position.set(0, yOffset, 0);
+      sprite.scale.set(3.4, 0.72, 1);
       mesh.add(sprite);
 
       graphGroup.add(mesh);

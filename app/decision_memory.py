@@ -35,17 +35,30 @@ def record_outcome(
     decision_id: str, kpi_delta: float, hypothesis_confirmed: bool
 ) -> str:
     outcome_id = f"outcome:{uuid.uuid4().hex[:8]}"
+    now_iso = datetime.now(timezone.utc).isoformat()
     with db.get_conn() as conn:
         conn.execute(
             "INSERT INTO outcome (id, decision_id, measured_at, kpi_delta, hypothesis_confirmed) VALUES (?, ?, ?, ?, ?)",
             (
                 outcome_id,
                 decision_id,
-                datetime.now(timezone.utc).isoformat(),
+                now_iso,
                 kpi_delta,
                 int(hypothesis_confirmed),
             ),
         )
+
+    # Phase 3: Automatic RL Edge Recalibration based on outcome reward signal
+    try:
+        from .edge_recalibration import edge_recalibration_engine
+        edge_recalibration_engine.recalibrate_from_outcome(
+            decision_id=decision_id,
+            hypothesis_confirmed=hypothesis_confirmed,
+            kpi_delta=kpi_delta,
+        )
+    except Exception as e:
+        print(f"Warning: Edge recalibration hook failed: {e}")
+
     return outcome_id
 
 

@@ -23,6 +23,7 @@ REVENUE_CSV = ROSSMANN_CSV
 CHANGE_LOG_CSV = os.path.join(DATA_DIR, "change_log.csv")
 TICKETS_CSV = os.path.join(DATA_DIR, "support_tickets.csv")
 SEMANTIC_CONTRACTS_YAML = os.path.join(DATA_DIR, "semantic_contracts.yaml")
+CROSS_DOMAIN_CSV = os.path.join(DATA_DIR, "cross_domain_kpis.csv")
 
 # ---------------------------------------------------------------------------
 # Load Governed Semantic Contracts from YAML (Single Source of Truth)

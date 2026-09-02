@@ -961,7 +961,230 @@ def parse_sso_session(req: dict):
     return tenant_manager.parse_sso_claims(token)
 
 
+# ============================================================================
+# Phase 3: Autonomous Recovery, RL Edge Recalibration & Cross-Domain KPIs
+# ============================================================================
+
+from app.recovery_engine import recovery_engine
+from app.edge_recalibration import edge_recalibration_engine
+from app import cross_domain_kpi
+
+
+# 1. Automated CI/CD Rollback Hooks (LaunchDarkly & GitHub Actions)
+@app.post("/recovery/trigger-rollback")
+def trigger_cicd_rollback(req: dict):
+    """Dispatches automated CI/CD rollback hooks via LaunchDarkly & GitHub Actions."""
+    decision_id = req.get("decision_id", "decision_manual_trigger")
+    action_category = req.get("action_category", "rollback_release")
+    target_release = req.get("target_release", "v5.4.0")
+    operator_id = req.get("operator_id", "analyst@evidenceiq.ai")
+    reason = req.get("reason", "Operator authorized rollback via Human Checkpoint.")
+
+    return recovery_engine.dispatch_rollback(
+        decision_id=decision_id,
+        action_category=action_category,
+        target_release=target_release,
+        operator_id=operator_id,
+        reason=reason,
+    )
+
+
+@app.get("/recovery/history")
+def get_recovery_execution_history(limit: int = 20):
+    """Returns audit history of automated CI/CD rollback dispatches."""
+    return {"history": recovery_engine.get_recovery_history(limit)}
+
+
+@app.get("/recovery/verify")
+def verify_rollback_recovery(execution_id: str):
+    """Verifies downstream recovery telemetry following rollback dispatch."""
+    return recovery_engine.verify_rollback_telemetry(execution_id)
+
+
+# 2. Decision Memory RL & Edge Recalibration
+@app.post("/recalibration/run")
+def run_rl_edge_recalibration(req: Optional[dict] = None):
+    """Executes reinforcement learning edge weight recalibration from recorded outcomes."""
+    body = req or {}
+    decision_id = body.get("decision_id", "decision:last_outcome")
+    confirmed = body.get("hypothesis_confirmed", True)
+    kpi_delta = float(body.get("kpi_delta", -35.5))
+    expected_recovery = float(body.get("expected_recovery", 35.0))
+
+    return edge_recalibration_engine.recalibrate_from_outcome(
+        decision_id=decision_id,
+        hypothesis_confirmed=confirmed,
+        kpi_delta=kpi_delta,
+        expected_recovery=expected_recovery,
+    )
+
+
+@app.get("/recalibration/history")
+def get_recalibration_history(limit: int = 30):
+    """Returns audit log of dynamic RL edge confidence adjustments."""
+    return {"history": edge_recalibration_engine.get_recalibration_history(limit)}
+
+
+@app.get("/recalibration/priors")
+def get_hypothesis_priors():
+    """Returns learned Bayesian prior scores for candidate hypotheses."""
+    return {"priors": edge_recalibration_engine.get_hypothesis_priors()}
+
+
+# 3. Cross-Domain KPI Correlation (Revenue ↔ NPS ↔ Churn ↔ Inventory)
+@app.get("/analytics/cross-domain/matrix")
+def get_cross_domain_matrix(region: str = "ALL"):
+    """Returns multi-domain correlation matrix across Revenue, NPS, Churn, Inventory, and Tickets."""
+    return cross_domain_kpi.compute_correlation_matrix(region)
+
+
+@app.get("/analytics/cross-domain/timeseries")
+def get_cross_domain_timeseries(region: str = "Region_A"):
+    """Returns synchronized daily time-series across cross-domain metrics."""
+    return cross_domain_kpi.get_cross_domain_timeseries(region)
+
+
+@app.get("/analytics/cross-domain/lead-lag")
+def get_cross_domain_lead_lag(region: str = "Region_A"):
+    """Returns lead-lag temporal cascade analysis establishing causal ordering."""
+    return cross_domain_kpi.compute_lead_lag_analysis(region)
+
+
+# ============================================================================
+# Phase 4: Enterprise BI Fleet Scale, Marketplace, Compliance & White-Label
+# ============================================================================
+
+from app.fleet_manager import fleet_manager
+from app.contract_marketplace import contract_marketplace
+from app.compliance_audit import compliance_audit_engine
+from app.whitelabel_service import whitelabel_service
+
+
+# 1. Federated Multi-Business-Unit Fleet Manager & Tenant Isolation
+@app.get("/fleet/units")
+def list_fleet_business_units():
+    """Returns all federated business units under centralized governance."""
+    return {"business_units": fleet_manager.list_business_units()}
+
+
+@app.get("/fleet/overview")
+def get_fleet_overview():
+    """Returns aggregated executive health, KPI count, and revenue-at-risk across all BUs."""
+    return fleet_manager.get_fleet_overview()
+
+
+@app.post("/fleet/register-unit")
+def register_fleet_business_unit(req: dict):
+    """Registers a new subsidiary business unit under centralized fleet governance."""
+    bu_id = req.get("bu_id", "bu:new_subsidiary")
+    name = req.get("name", "New Enterprise Subsidiary")
+    region = req.get("region", "Global")
+    tier = req.get("tier", "Tier 2 (Standard)")
+    api_endpoint = req.get("api_endpoint")
+
+    return fleet_manager.register_business_unit(
+        bu_id=bu_id, name=name, region=region, tier=tier, api_endpoint=api_endpoint
+    )
+
+
+@app.post("/fleet/ping")
+def ping_fleet_unit(req: dict):
+    """Tests connectivity, TLS version, and updates heartbeat for a BU node."""
+    bu_id = req.get("bu_id", "bu:north_america_retail")
+    return fleet_manager.ping_heartbeat(bu_id)
+
+
+@app.get("/fleet/isolation-check")
+def check_tenant_isolation(requesting_bu: str = "bu:north_america_retail", target_bu: str = "bu:emea_ecommerce"):
+    """Validates cross-tenant boundaries and enforces data isolation rules."""
+    return fleet_manager.check_tenant_isolation(requesting_bu, target_bu)
+
+
+# 2. Cross-Enterprise Semantic Contract Marketplace
+@app.get("/marketplace/contracts")
+def list_marketplace_contracts(search: Optional[str] = None, sla_tier: Optional[str] = None):
+    """Returns published semantic contracts with search and SLA tier filters."""
+    return {"contracts": contract_marketplace.list_contracts(search=search, sla_tier=sla_tier)}
+
+
+@app.post("/marketplace/publish")
+def publish_marketplace_contract(req: dict):
+    """Publishes a new governed semantic contract to the enterprise marketplace."""
+    return contract_marketplace.publish_contract(
+        metric_id=req.get("metric_id", "metric:new_metric"),
+        title=req.get("title", "Governed Enterprise Metric Standard"),
+        publisher_bu=req.get("publisher_bu", "bu:north_america_retail"),
+        version=req.get("version", "1.0.0"),
+        sla_tier=req.get("sla_tier", "Standard (99.0%)"),
+        contract_schema=req.get("contract_schema"),
+    )
+
+
+@app.post("/marketplace/subscribe")
+def subscribe_marketplace_contract(req: dict):
+    """Subscribes an operating business unit to a published marketplace contract."""
+    contract_id = req.get("contract_id", "")
+    subscriber_bu = req.get("subscriber_bu", "bu:north_america_retail")
+    return contract_marketplace.subscribe_to_contract(contract_id, subscriber_bu)
+
+
+# 3. Regulatory Compliance Reporting Automation (SOC-2, SOX 404, GDPR)
+@app.get("/compliance/audit-packs")
+def list_compliance_audit_packs():
+    """Returns list of certified compliance audit dossiers on file."""
+    return {"audit_packs": compliance_audit_engine.list_audit_packs()}
+
+
+@app.post("/compliance/generate-pack")
+def generate_compliance_audit_pack(req: dict):
+    """Generates an auditable compliance dossier with cryptographic proof and control scoring."""
+    standard = req.get("standard", "SOC-2")
+    auditor = req.get("auditor_identity", "Enterprise Lead Compliance Auditor")
+    return compliance_audit_engine.generate_audit_pack(standard=standard, auditor_identity=auditor)
+
+
+@app.get("/compliance/export/{dossier_id}")
+def export_compliance_dossier(dossier_id: str, format: str = "json"):
+    """Exports full compliance dossier as JSON or regulatory Markdown."""
+    if format == "markdown":
+        return {"markdown": compliance_audit_engine.generate_markdown_dossier(dossier_id)}
+    pack = compliance_audit_engine.get_audit_pack(dossier_id)
+    if not pack:
+        raise HTTPException(status_code=404, detail="Audit pack not found")
+    return pack
+
+
+# 4. White-Label Platform Licensing for Accenture Engagements
+@app.get("/whitelabel/config")
+def get_whitelabel_config():
+    """Returns the currently active white-label branding configuration."""
+    return whitelabel_service.get_active_config()
+
+
+@app.post("/whitelabel/update")
+def update_whitelabel_config(req: dict):
+    """Updates client white-label branding parameters."""
+    return whitelabel_service.update_config(
+        tenant_id=req.get("tenant_id", "tenant:custom"),
+        brand_name=req.get("brand_name", "EvidenceIQ Custom Suite"),
+        preset_name=req.get("preset_name", "Custom Enterprise Engagement"),
+        primary_color=req.get("primary_color", "#A100FF"),
+        secondary_color=req.get("secondary_color", "#8B5CF6"),
+        logo_symbol=req.get("logo_symbol", ">"),
+        engagement_code=req.get("engagement_code", "ACN-CUSTOM-2026"),
+        custom_domain=req.get("custom_domain", "custom.evidenceiq.ai"),
+    )
+
+
+@app.get("/whitelabel/presets")
+def list_whitelabel_presets():
+    """Returns pre-configured Accenture client branding templates."""
+    return {"presets": whitelabel_service.list_presets()}
+
+
 if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+
+

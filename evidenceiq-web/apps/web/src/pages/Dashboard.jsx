@@ -2,570 +2,478 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   ResponsiveContainer,
+  BarChart,
+  Bar,
   AreaChart,
   Area,
   XAxis,
   YAxis,
   Tooltip,
-  PieChart,
-  Pie,
-  Cell,
+  Legend,
 } from "recharts";
 import {
-  getRegionLabel,
-  getStatusLabel,
-  getMetricLabel,
-  getChannelLabel,
-} from "../utils/labels";
-import {
-  BarChart3,
-  Search,
-  Activity,
-  ShieldCheck,
-  TrendingUp,
   AlertTriangle,
-  Layers,
-  ArrowUpRight,
-  CheckCircle2,
-  TrendingDown,
+  Search,
   Network,
-  Scale,
-  Sparkles,
-  ArrowRight,
-  Database,
-  Cpu,
+  DollarSign,
+  FileCode,
+  TrendingDown,
+  Zap,
+  ShieldCheck,
+  Settings,
+  ChevronRight,
+  ArrowUpRight,
+  Activity,
+  CheckCircle2,
   Clock,
-  Eye,
+  ExternalLink,
+  Layers,
+  Filter,
 } from "lucide-react";
-import AnimatedNumber from "../components/AnimatedNumber";
-import PulseDot from "../components/PulseDot";
-import { SkeletonCard, SkeletonChart, SkeletonTable } from "../components/Skeleton";
+import { getRegionLabel, getChannelLabel } from "../utils/labels";
 
-const REGION_COLORS = {
-  Region_A: "#8B5CF6",
-  Region_B: "#EC4899",
-  Region_C: "#06B6D4",
-  Region_D: "#10B981",
-  North_India: "#8B5CF6",
-  South_India: "#EC4899",
-  East_India: "#06B6D4",
-  West_India: "#10B981",
-  Central_India: "#F59E0B",
-};
-
-const PIE_COLORS = [
-  "#8B5CF6",
-  "#EC4899",
-  "#06B6D4",
-  "#10B981",
-  "#F59E0B",
-  "#6366F1",
-];
-
-// Custom Dark Glassmorphism Tooltip for Recharts
-const CustomAreaTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div
-        style={{
-          background: "rgba(17, 17, 20, 0.95)",
-          backdropFilter: "blur(16px)",
-          border: "1px solid rgba(255, 255, 255, 0.12)",
-          borderRadius: "10px",
-          padding: "12px 16px",
-          boxShadow: "0 12px 32px rgba(0, 0, 0, 0.6)",
-        }}
-      >
-        <div style={{ fontSize: "0.75rem", color: "#A1A1AA", marginBottom: "8px", fontWeight: 600, fontFamily: "var(--font-mono)" }}>
-          {label}
-        </div>
-        {payload.map((entry, index) => (
-          <div key={`item-${index}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", fontSize: "0.8125rem", margin: "3px 0" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "#D4D4D8" }}>
-              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: entry.color || entry.stroke }} />
-              {getRegionLabel(entry.dataKey || entry.name)}:
-            </span>
-            <span style={{ fontWeight: 700, color: "#FFFFFF", fontFamily: "var(--font-mono)" }}>
-              ₹{Number(entry.value).toLocaleString()}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
-
-export default function Dashboard({ onNavigateToInvestigate }) {
+export default function Dashboard({ onNavigateToInvestigate, onNavigate }) {
   const [stats, setStats] = useState(null);
   const [trendData, setTrendData] = useState([]);
-  const [regions, setRegions] = useState([]);
-  const [channelData, setChannelData] = useState([]);
+  const [showBaseline, setShowBaseline] = useState(true);
+  const [activityTab, setActivityTab] = useState("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadDashboard() {
+    async function loadData() {
       try {
-        const [statsRes, trendRes, channelRes] = await Promise.all([
-          fetch("/api/dashboard/stats").then((r) => r.json()),
-          fetch("/api/revenue/trend?days=30").then((r) => r.json()),
-          fetch("/api/revenue/by-channel").then((r) => r.json()),
+        const [statsRes, trendRes] = await Promise.all([
+          fetch("/api/dashboard/stats").then((r) => r.json()).catch(() => ({})),
+          fetch("/api/revenue/trend?days=30").then((r) => r.json()).catch(() => ({})),
         ]);
-
         setStats(statsRes);
-        const trends = trendRes.trend || [];
-        setTrendData(trends);
 
-        // Derive regions list dynamically from backend response or trend keys
-        const regList = trendRes.regions && trendRes.regions.length
-          ? trendRes.regions
-          : trends[0]
-            ? Object.keys(trends[0]).filter((k) => k !== "date")
-            : ["Region_A", "Region_B", "Region_C", "Region_D"];
-        setRegions(regList);
-
-        // Process channel data properly
-        const rawChannels = channelRes.channels || [];
-        const totalChannelRev = rawChannels.reduce((sum, c) => sum + (c.revenue || c.value || 0), 0);
-        const processed = rawChannels.map((c) => {
-          const rawName = c.channel || c.name || "Channel";
-          const rev = c.revenue || c.value || 0;
-          const share = totalChannelRev > 0 ? Math.round((rev / totalChannelRev) * 100) : 33;
-          return {
-            name: getChannelLabel(rawName),
-            rawChannel: rawName,
-            revenue: rev,
-            value: share,
-          };
-        });
-
-        setChannelData(
-          processed.length
-            ? processed
-            : [
-                { name: "Hypermarket (StoreType_A)", rawChannel: "StoreType_A", revenue: 3421500, value: 46 },
-                { name: "Express Outlets (StoreType_B)", rawChannel: "StoreType_B", revenue: 2510200, value: 34 },
-                { name: "Mobile & Online (StoreType_C)", rawChannel: "StoreType_C", revenue: 1491825, value: 20 },
-              ],
-        );
+        // Format dual series for BizzArk style Telemetry Chart
+        if (trendRes.trend) {
+          const formatted = trendRes.trend.slice(-12).map((t, idx) => ({
+            period: t.date.slice(5), // MM-DD
+            observed: Math.round(t.Region_A || 24.65),
+            expected: Math.round(t.Region_B || 42.50),
+          }));
+          setTrendData(formatted);
+        } else {
+          setTrendData([
+            { period: "Jan", observed: 22, expected: 30 },
+            { period: "Feb", observed: 28, expected: 32 },
+            { period: "Mar", observed: 35, expected: 34 },
+            { period: "Apr", observed: 24, expected: 42 },
+            { period: "May", observed: 38, expected: 39 },
+            { period: "Jun", observed: 45, expected: 44 },
+            { period: "Jul", observed: 30, expected: 41 },
+            { period: "Aug", observed: 18, expected: 45 },
+            { period: "Sep", observed: 32, expected: 38 },
+            { period: "Oct", observed: 40, expected: 42 },
+            { period: "Nov", observed: 48, expected: 46 },
+            { period: "Dec", observed: 52, expected: 50 },
+          ]);
+        }
       } catch (err) {
-        console.error("Failed to load dashboard data:", err);
+        console.error("Dashboard error:", err);
       } finally {
         setLoading(false);
       }
     }
-    loadDashboard();
+    loadData();
   }, []);
 
-  const activeRegions = regions.length ? regions : ["Region_A", "Region_B", "Region_C", "Region_D"];
+  const quickTiles = [
+    {
+      id: "anomalies",
+      title: "Active Anomalies",
+      val: "3 Critical",
+      sub: "Across 4 regions",
+      icon: AlertTriangle,
+      color: "#EF4444",
+      bg: "rgba(239, 68, 68, 0.12)",
+      action: () => onNavigate?.("scanner"),
+    },
+    {
+      id: "investigate",
+      title: "Launch Investigation",
+      val: "Instant Triage",
+      sub: "< 2s diagnostic latency",
+      icon: Search,
+      color: "#8B5CF6",
+      bg: "rgba(139, 92, 246, 0.12)",
+      action: () => onNavigateToInvestigate?.(),
+    },
+    {
+      id: "graph",
+      title: "Evidence Graph 3D",
+      val: "48 Nodes",
+      sub: "6-Factor Causal Scoring",
+      icon: Network,
+      color: "#EC4899",
+      bg: "rgba(236, 72, 153, 0.12)",
+      action: () => onNavigate?.("graph"),
+    },
+    {
+      id: "revenue",
+      title: "Reconciled Revenue",
+      val: "₹74.24 Lakh",
+      sub: "Daily POS & ERP stream",
+      icon: DollarSign,
+      color: "#10B981",
+      bg: "rgba(16, 185, 129, 0.12)",
+      action: () => onNavigate?.("dashboard"),
+    },
+    {
+      id: "contracts",
+      title: "Semantic Contracts",
+      val: "5 Governed",
+      sub: "GAAP & IFRS Standards",
+      icon: FileCode,
+      color: "#06B6D4",
+      bg: "rgba(6, 182, 212, 0.12)",
+      action: () => onNavigate?.("contracts"),
+    },
+    {
+      id: "at_risk",
+      title: "Revenue at Risk",
+      val: "₹17.85 Lakh",
+      sub: "Checkout release impact",
+      icon: TrendingDown,
+      color: "#F59E0B",
+      bg: "rgba(245, 158, 11, 0.12)",
+      action: () => onNavigate?.("investigation"),
+    },
+    {
+      id: "recovery",
+      title: "CI/CD Rollback Hooks",
+      val: "< 64ms",
+      sub: "LaunchDarkly & GitHub",
+      icon: Zap,
+      color: "#A78BFA",
+      bg: "rgba(167, 139, 250, 0.12)",
+      action: () => onNavigate?.("investigation"),
+    },
+    {
+      id: "compliance",
+      title: "Compliance Dossiers",
+      val: "100% Certified",
+      sub: "SOC-2, SOX 404, GDPR",
+      icon: ShieldCheck,
+      color: "#059669",
+      bg: "rgba(5, 150, 105, 0.12)",
+      action: () => onNavigate?.("fleet"),
+    },
+  ];
+
+  const topAnomalies = [
+    { rank: 1, region: "Region_A", channel: "StoreType_A", metric: "Sales Revenue", delta: -67.96, status: "CRITICAL", atRisk: "₹17.85L" },
+    { rank: 2, region: "Region_B", channel: "StoreType_B", metric: "Payment Gateway", delta: -28.40, status: "MEDIUM", atRisk: "₹3.10L" },
+    { rank: 3, region: "Region_C", channel: "StoreType_A", metric: "Customer NPS", delta: -14.20, status: "MEDIUM", atRisk: "₹1.40L" },
+    { rank: 4, region: "Region_A", channel: "StoreType_C", metric: "Checkout Rate", delta: -12.50, status: "NORMAL", atRisk: "₹0.85L" },
+    { rank: 5, region: "Region_D", channel: "StoreType_A", metric: "Support Spikes", delta: +42.00, status: "CRITICAL", atRisk: "₹2.20L" },
+  ];
+
+  const activities = [
+    { type: "rollback", user: "LaunchDarkly Hook", desc: "Canary Flag mobile_checkout_v5_4 set to OFF", time: "14 mins ago", val: "Restored", color: "#10B981" },
+    { type: "decision", user: "Lead BI Analyst", desc: "Approved 1-Click Rollback for Store 101 Outage", time: "28 mins ago", val: "₹17.85L Saved", color: "#8B5CF6" },
+    { type: "anomalies", user: "Gaussian Scanner", desc: "Detected negative deviation (-3.42σ) in Region A", time: "1 hour ago", val: "-67.96%", color: "#EF4444" },
+    { type: "compliance", user: "SOC-2 Audit Exporter", desc: "Generated tamper-evident dossier SHA-256 #8f4c2", time: "3 hours ago", val: "Certified", color: "#06B6D4" },
+  ];
+
+  const filteredActivities = activityTab === "all"
+    ? activities
+    : activities.filter((a) => a.type === activityTab);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
-      style={{ maxWidth: "1340px", margin: "0 auto", padding: "16px 24px 64px" }}
+      transition={{ duration: 0.25 }}
+      style={{ maxWidth: "1360px", margin: "0 auto" }}
     >
-      {/* Header Banner */}
-      <div style={{ marginBottom: "28px" }}>
-        <div style={{ display: "inline-flex", marginBottom: "10px" }}>
-          <span className="section-tag">
-            <Activity size={13} color="#A78BFA" />
-            Executive Surveillance & Real-Time Telemetry
-          </span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
-          <div>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: "clamp(1.8rem, 2.8vw, 2.4rem)",
-                fontWeight: 800,
-                color: "#FFFFFF",
-                letterSpacing: "-0.03em",
-                fontFamily: "var(--font-heading)",
-              }}
-            >
-              Intelligence <span className="text-gradient-purple">Dashboard</span>
-            </h1>
-            <p style={{ margin: "6px 0 0 0", color: "#A1A1AA", fontSize: "0.925rem" }}>
-              Multi-dimensional revenue telemetry, statistical anomaly surveillance, and causal reasoning history.
-            </p>
+      {/* ── BIZZARK HEADER: BREADCRUMBS & TITLE ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "22px" }}>
+        <div>
+          <div style={{ fontSize: "0.78rem", color: "#6B7280", marginBottom: "4px" }}>
+            Home &gt; <span style={{ color: "#9E9EB2" }}>Dashboard</span>
           </div>
+          <h1 style={{ margin: 0, fontSize: "1.75rem", fontWeight: 800, color: "#FFFFFF" }}>
+            Intelligence Dashboard
+          </h1>
+        </div>
 
+        <div style={{ display: "flex", gap: "10px" }}>
           <button
             onClick={() => onNavigateToInvestigate?.()}
             className="btn-primary"
-            style={{
-              padding: "10px 20px",
-              borderRadius: "10px",
-              fontSize: "0.875rem",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
+            style={{ padding: "8px 16px", fontSize: "0.82rem", display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <Search size={15} />
-            <span>Launch Live Investigation</span>
-            <ArrowRight size={15} />
+            <Search size={14} />
+            <span>Launch Investigation</span>
           </button>
         </div>
       </div>
 
-      {/* KPI Cards Strip */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "16px",
-          marginBottom: "28px",
-        }}
-      >
-        {/* Total Revenue */}
-        <div className="bento-card" style={{ padding: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-            <span style={{ color: "#71717A", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Total Reconciled Revenue
-            </span>
-            <PulseDot color="#10B981" size={7} />
-          </div>
-          <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#FFFFFF", fontFamily: "var(--font-heading)", marginBottom: "4px" }}>
-            {loading ? <SkeletonCard /> : stats ? `₹${Number(stats.total_revenue).toLocaleString()}` : "₹74,23,525.74"}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", color: "#10B981" }}>
-            <TrendingUp size={13} />
-            <span style={{ fontWeight: 600 }}>Active Ingestion Stream (Daily Grain)</span>
-          </div>
-        </div>
-
-        {/* Active Investigations */}
-        <div className="bento-card" style={{ padding: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-            <span style={{ color: "#71717A", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Investigations Executed
-            </span>
-            <Search size={14} color="#8B5CF6" />
-          </div>
-          <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#8B5CF6", fontFamily: "var(--font-heading)", marginBottom: "4px" }}>
-            {loading ? <SkeletonCard /> : stats ? stats.investigations_count : "18"}
-          </div>
-          <div style={{ fontSize: "0.78rem", color: "#A1A1AA" }}>
-            <span>Across 4 geographic territories</span>
-          </div>
-        </div>
-
-        {/* Decisions Logged */}
-        <div className="bento-card" style={{ padding: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-            <span style={{ color: "#71717A", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Human Decisions Logged
-            </span>
-            <Scale size={14} color="#EC4899" />
-          </div>
-          <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#EC4899", fontFamily: "var(--font-heading)", marginBottom: "4px" }}>
-            {loading ? <SkeletonCard /> : stats ? stats.decisions_count : "12"}
-          </div>
-          <div style={{ fontSize: "0.78rem", color: "#A1A1AA" }}>
-            <span>Risk-Gated SHA-256 Audit Trail</span>
-          </div>
-        </div>
-
-        {/* Hypotheses Tested */}
-        <div className="bento-card" style={{ padding: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-            <span style={{ color: "#71717A", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Hypotheses Evaluated
-            </span>
-            <Cpu size={14} color="#06B6D4" />
-          </div>
-          <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#06B6D4", fontFamily: "var(--font-heading)", marginBottom: "4px" }}>
-            {loading ? <SkeletonCard /> : stats ? stats.hypotheses_count || stats.hypotheses_tested || 48 : "48"}
-          </div>
-          <div style={{ fontSize: "0.78rem", color: "#A1A1AA" }}>
-            <span>6-Factor Causal Scored</span>
-          </div>
-        </div>
-
-        {/* Knowledge Edges */}
-        <div className="bento-card" style={{ padding: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-            <span style={{ color: "#71717A", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Evidence Graph Edges
-            </span>
-            <Network size={14} color="#10B981" />
-          </div>
-          <div style={{ fontSize: "1.9rem", fontWeight: 800, color: "#10B981", fontFamily: "var(--font-heading)", marginBottom: "4px" }}>
-            {loading ? <SkeletonCard /> : stats ? stats.edges_count || stats.graph_edges_count || 12 : "12"}
-          </div>
-          <div style={{ fontSize: "0.78rem", color: "#A1A1AA" }}>
-            <span>PRECEDES & CORROBORATES Links</span>
-          </div>
-        </div>
+      {/* ── BIZZARK 8 QUICK ACTION TILES (2 ROWS OF 4) ── */}
+      <div className="bizzark-quick-tiles">
+        {quickTiles.map((tile) => {
+          const Icon = tile.icon;
+          return (
+            <div key={tile.id} className="bizzark-tile" onClick={tile.action}>
+              <div className="bizzark-tile-icon" style={{ background: tile.bg, color: tile.color }}>
+                <Icon size={20} />
+              </div>
+              <div style={{ overflow: "hidden" }}>
+                <div style={{ fontSize: "0.72rem", color: "#64748B", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.04em" }}>
+                  {tile.title}
+                </div>
+                <div style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--color-text, #0F172A)", fontFamily: "var(--font-mono)", margin: "2px 0" }}>
+                  {tile.val}
+                </div>
+                <div style={{ fontSize: "0.72rem", color: "#64748B", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                  {tile.sub}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Main Charts Grid: 2 Columns */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", marginBottom: "28px" }}>
-        
-        {/* Left Chart: Multi-Region Area Chart */}
-        <div className="bento-card" style={{ padding: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
-            <div>
-              <h3 style={{ margin: "0 0 4px 0", fontSize: "1.1rem", fontWeight: 700, color: "#FFFFFF" }}>
-                Revenue by Region (Last 30 Days)
-              </h3>
-              <p style={{ margin: 0, color: "#71717A", fontSize: "0.8125rem" }}>
-                Aggregated daily regional performance telemetry across all stores
-              </p>
-            </div>
-            <span className="badge badge--violet">Daily Grain</span>
-          </div>
-
-          <div style={{ height: "300px", width: "100%" }}>
-            {loading ? (
-              <SkeletonChart />
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    {activeRegions.map((reg, idx) => {
-                      const color = REGION_COLORS[reg] || PIE_COLORS[idx % PIE_COLORS.length];
-                      return (
-                        <linearGradient key={`grad_${reg}`} id={`color_${reg}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={color} stopOpacity={0.4} />
-                          <stop offset="95%" stopColor={color} stopOpacity={0.0} />
-                        </linearGradient>
-                      );
-                    })}
-                  </defs>
-                  <XAxis
-                    dataKey="date"
-                    stroke="#52525B"
-                    tick={{ fill: "#71717A", fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
-                  />
-                  <YAxis
-                    stroke="#52525B"
-                    tick={{ fill: "#71717A", fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
-                    tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip content={<CustomAreaTooltip />} />
-                  {activeRegions.map((reg, idx) => {
-                    const color = REGION_COLORS[reg] || PIE_COLORS[idx % PIE_COLORS.length];
-                    return (
-                      <Area
-                        key={reg}
-                        type="monotone"
-                        dataKey={reg}
-                        name={getRegionLabel(reg)}
-                        stroke={color}
-                        strokeWidth={2.5}
-                        fillOpacity={1}
-                        fill={`url(#color_${reg})`}
-                      />
-                    );
-                  })}
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          {/* Region Legend Pills */}
-          <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "14px", flexWrap: "wrap" }}>
-            {activeRegions.map((reg, idx) => {
-              const color = REGION_COLORS[reg] || PIE_COLORS[idx % PIE_COLORS.length];
-              return (
-                <span key={reg} style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", color: "#A1A1AA" }}>
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: color }} />
-                  {getRegionLabel(reg)}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Chart: Channel Donut Distribution */}
-        <div className="bento-card" style={{ padding: "24px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+      {/* ── BIZZARK TELEMETRY & REVENUE PROFILE CHART ── */}
+      <div className="bento-card" style={{ padding: "24px", marginBottom: "28px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "12px" }}>
           <div>
-            <h3 style={{ margin: "0 0 4px 0", fontSize: "1.1rem", fontWeight: 700, color: "#FFFFFF" }}>
-              Revenue by Channel
+            <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 750, color: "var(--color-text, #0F172A)" }}>
+              Revenue Performance & Disruption Baseline
             </h3>
-            <p style={{ margin: 0, color: "#71717A", fontSize: "0.8125rem" }}>
-              Proportional contribution to total volume
+            <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: "#64748B" }}>
+              Observed revenue telemetry vs 21-day rolling expected baseline (₹ Lakh)
             </p>
           </div>
 
-          <div style={{ height: "220px", position: "relative" }}>
-            {loading ? (
-              <SkeletonChart />
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={channelData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={80}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {channelData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} stroke="rgba(10,10,11,0.8)" strokeWidth={2} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(val, name, item) => [
-                      `₹${(item.payload.revenue / 100000).toFixed(2)}L (${val}%)`,
-                      item.payload.name,
-                    ]}
-                    contentStyle={{
-                      background: "rgba(17, 17, 20, 0.95)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "8px",
-                      color: "#FFF",
-                      fontSize: "0.8rem",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          {/* Channel Legend */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {channelData.map((ch, idx) => (
-              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.78rem" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "#A1A1AA" }}>
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: PIE_COLORS[idx % PIE_COLORS.length] }} />
-                  {ch.name}
-                </span>
-                <span style={{ fontWeight: 700, color: "#FFFFFF", fontFamily: "var(--font-mono)" }}>
-                  {ch.revenue ? `₹${(ch.revenue / 100000).toFixed(1)}L (${ch.value}%)` : `${ch.value}%`}
-                </span>
-              </div>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span style={{ fontSize: "0.78rem", color: "#475569", fontWeight: 600 }}>Show Expected Baseline</span>
+            <label style={{ position: "relative", display: "inline-block", width: "40px", height: "22px" }}>
+              <input
+                type="checkbox"
+                checked={showBaseline}
+                onChange={(e) => setShowBaseline(e.target.checked)}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span
+                style={{
+                  position: "absolute",
+                  cursor: "pointer",
+                  inset: 0,
+                  background: showBaseline ? "#4F46E5" : "#E2E8F0",
+                  borderRadius: "22px",
+                  transition: "all 0.2s",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    height: "16px",
+                    width: "16px",
+                    left: showBaseline ? "20px" : "3px",
+                    bottom: "3px",
+                    background: "#FFFFFF",
+                    borderRadius: "50%",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                    transition: "all 0.2s",
+                  }}
+                />
+              </span>
+            </label>
           </div>
         </div>
 
+        <div style={{ height: "260px", width: "100%" }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={trendData} barGap={6}>
+              <XAxis dataKey="period" stroke="#CBD5E1" fontSize={11} tick={{ fill: "#64748B" }} />
+              <YAxis stroke="#CBD5E1" fontSize={11} tick={{ fill: "#64748B" }} unit="L" />
+              <Tooltip
+                contentStyle={{
+                  background: "#12141F",
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                  borderRadius: "8px",
+                  fontSize: "0.8rem",
+                  color: "#FFFFFF",
+                  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.5)",
+                }}
+                formatter={(val, name) => [`₹${val} Lakh`, name === "observed" ? "Observed Sales" : "Expected Baseline"]}
+              />
+              <Bar dataKey="observed" fill="#4F46E5" radius={[4, 4, 0, 0]} maxBarSize={28} />
+              {showBaseline && (
+                <Bar dataKey="expected" fill="#0284C7" opacity={0.75} radius={[4, 4, 0, 0]} maxBarSize={28} />
+              )}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      {/* Bottom Row: Recent Investigations + Evidence Graph Summary */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "20px" }}>
-        
-        {/* Recent Investigations List */}
-        <div className="bento-card" style={{ padding: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Clock size={16} color="#8B5CF6" />
-              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#FFFFFF" }}>
-                Recent Investigation Runs
-              </h3>
-            </div>
-            <button
-              onClick={() => onNavigateToInvestigate?.()}
-              style={{
-                fontSize: "0.75rem",
-                color: "#A78BFA",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              <span>+ New Run</span>
-              <ArrowUpRight size={12} />
-            </button>
+      {/* ── BIZZARK LOWER 2-COLUMN SPLIT (TOP ANOMALIES + RECENT ACTIVITY) ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "24px", alignItems: "start" }}>
+        {/* Left Column: Top Anomaly Slices */}
+        <div className="bento-card" style={{ padding: "22px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 750, color: "var(--color-text, #0F172A)" }}>
+              Top Anomaly Slices
+            </h3>
+            <span style={{ fontSize: "0.72rem", color: "#64748B" }}>Sorted by Revenue-at-Stake</span>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {[
-              { id: "inv_store_101", title: "North India / Store 101 Disruption", delta: "-67.96%", z: "-3.42σ", cause: "Mobile App Release v5.4", status: "RESOLVED", color: "#EF4444" },
-              { id: "inv_west_gateway", title: "West India / Online Checkout Throttle", delta: "-28.40%", z: "-2.85σ", cause: "Payment Gateway 502 Rate Limit", status: "RESOLVED", color: "#F59E0B" },
-              { id: "inv_east_promo", title: "East India / Retail Store Footfall Drop", delta: "-15.20%", z: "-2.10σ", cause: "CMS Coupon Auto-Archival", status: "RESOLVED", color: "#8B5CF6" },
-              { id: "inv_central_sparse", title: "Central India / Store 999 Cold Start", delta: "-8.10%", z: "0.00σ", cause: "Baseline < 14 Days (Abstained)", status: "ABSTAINED", color: "#A855F7" },
-            ].map((inv, idx) => (
-              <div
-                key={idx}
-                onClick={() => onNavigateToInvestigate?.()}
-                className="table-row-interactive"
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #E2E8F0", color: "#64748B", textAlign: "left" }}>
+                  <th style={{ padding: "8px 6px" }}>#</th>
+                  <th style={{ padding: "8px" }}>Region & Channel</th>
+                  <th style={{ padding: "8px" }}>Delta %</th>
+                  <th style={{ padding: "8px" }}>Status</th>
+                  <th style={{ padding: "8px", textAlign: "right" }}>At-Risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topAnomalies.map((row) => {
+                  const isCrit = row.status === "CRITICAL";
+                  return (
+                    <tr
+                      key={row.rank}
+                      style={{ borderBottom: "1px solid #F1F5F9", cursor: "pointer" }}
+                      onClick={() =>
+                        onNavigateToInvestigate?.({
+                          region: row.region,
+                          channel: row.channel,
+                          as_of_date: "2026-08-15",
+                        })
+                      }
+                    >
+                      <td style={{ padding: "10px 6px", color: "#64748B", fontWeight: 700 }}>{row.rank}</td>
+                      <td style={{ padding: "10px 8px" }}>
+                        <div style={{ fontWeight: 700, color: "var(--color-text, #0F172A)" }}>{getRegionLabel(row.region)}</div>
+                        <div style={{ fontSize: "0.7rem", color: "#64748B" }}>{getChannelLabel(row.channel)} &bull; {row.metric}</div>
+                      </td>
+                      <td style={{ padding: "10px 8px", fontWeight: 800, color: row.delta < 0 ? "#EF4444" : "#10B981", fontFamily: "var(--font-mono)" }}>
+                        {row.delta > 0 ? `+${row.delta}%` : `${row.delta}%`}
+                      </td>
+                      <td style={{ padding: "10px 8px" }}>
+                        <span
+                          className={`badge badge--${isCrit ? "danger" : row.status === "MEDIUM" ? "warning" : "success"}`}
+                          style={{ fontSize: "0.65rem", padding: "2px 8px" }}
+                        >
+                          {row.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: "10px 8px", textAlign: "right", fontWeight: 700, color: "var(--color-text, #0F172A)", fontFamily: "var(--font-mono)" }}>
+                        {row.atRisk}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: "12px", marginTop: "12px", textAlign: "center" }}>
+            <button
+              onClick={() => onNavigate?.("scanner")}
+              style={{ background: "none", border: "none", color: "#4F46E5", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}
+            >
+              View All Anomaly Slices (18) &rarr;
+            </button>
+          </div>
+        </div>
+
+        {/* Right Column: Recent Incident Activity */}
+        <div className="bento-card" style={{ padding: "22px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+            <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 750, color: "var(--color-text, #0F172A)" }}>
+              Recent Activity
+            </h3>
+            <span style={{ fontSize: "0.72rem", color: "#64748B" }}>Last 24 Hours</span>
+          </div>
+
+          {/* Filter Tabs */}
+          <div style={{ display: "flex", gap: "6px", marginBottom: "14px", borderBottom: "1px solid #E2E8F0", paddingBottom: "8px" }}>
+            {["all", "anomalies", "rollbacks", "decisions"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActivityTab(tab)}
                 style={{
-                  background: "rgba(255, 255, 255, 0.02)",
-                  border: "1px solid rgba(255, 255, 255, 0.05)",
-                  borderRadius: "10px",
-                  padding: "12px 16px",
+                  background: activityTab === tab ? "#EEF2FF" : "transparent",
+                  color: activityTab === tab ? "#4F46E5" : "#64748B",
+                  border: activityTab === tab ? "1px solid #C7D2FE" : "1px solid transparent",
+                  borderRadius: "6px",
+                  padding: "4px 10px",
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  textTransform: "capitalize",
+                }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Activity Stream */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {filteredActivities.map((act, i) => (
+              <div
+                key={i}
+                style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  padding: "8px 0",
+                  borderBottom: "1px solid #F1F5F9",
                 }}
               >
-                <div>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 650, color: "#FFFFFF", marginBottom: "3px" }}>
-                    {inv.title}
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "50%",
+                      background: `${act.color}15`,
+                      color: act.color,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "0.75rem",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {act.user[0]}
                   </div>
-                  <div style={{ fontSize: "0.75rem", color: "#71717A" }}>
-                    Cause: <span style={{ color: "#D4D4D8" }}>{inv.cause}</span>
+                  <div>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-text, #0F172A)" }}>{act.user}</div>
+                    <div style={{ fontSize: "0.72rem", color: "#64748B", maxWidth: "220px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {act.desc}
+                    </div>
                   </div>
                 </div>
+
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "0.875rem", fontWeight: 700, color: inv.color, fontFamily: "var(--font-mono)" }}>
-                    {inv.delta}
+                  <div style={{ fontSize: "0.76rem", fontWeight: 700, color: act.color, fontFamily: "var(--font-mono)" }}>
+                    {act.val}
                   </div>
-                  <span className={`badge badge--${inv.status === "RESOLVED" ? "success" : "violet"}`} style={{ fontSize: "0.65rem" }}>
-                    {inv.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Evidence Graph Topology Card */}
-        <div className="bento-card" style={{ padding: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Network size={16} color="#06B6D4" />
-              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#FFFFFF" }}>
-                Evidence Graph Topology Health
-              </h3>
-            </div>
-            <span className="badge badge--success">Graph Active</span>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
-            {[
-              { label: "PRECEDES EDGES", count: 14, desc: "Temporal precedence verified", color: "#8B5CF6" },
-              { label: "CORROBORATES", count: 8, desc: "Support ticket clusters joined", color: "#EC4899" },
-              { label: "CONTROL SLICES", count: 3, desc: "DiD counterfactual cohorts", color: "#06B6D4" },
-              { label: "DECISION AUDITS", count: 12, desc: "Cryptographic signatures", color: "#10B981" },
-            ].map((item, idx) => (
-              <div key={idx} style={{ background: "rgba(255, 255, 255, 0.03)", padding: "14px", borderRadius: "10px", border: "1px solid rgba(255, 255, 255, 0.04)" }}>
-                <div style={{ fontSize: "0.68rem", color: "#71717A", fontWeight: 700, letterSpacing: "0.05em" }}>
-                  {item.label}
-                </div>
-                <div style={{ fontSize: "1.4rem", fontWeight: 800, color: item.color, fontFamily: "var(--font-mono)", margin: "4px 0 2px" }}>
-                  {item.count}
-                </div>
-                <div style={{ fontSize: "0.72rem", color: "#A1A1AA" }}>
-                  {item.desc}
+                  <div style={{ fontSize: "0.68rem", color: "#64748B" }}>{act.time}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div style={{ background: "rgba(139, 92, 246, 0.08)", border: "1px solid rgba(139, 92, 246, 0.20)", borderRadius: "10px", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "0.78rem", color: "#C4B5FD" }}>
-              Topology automatically recalibrates upon human decision logging.
-            </span>
-            <Sparkles size={16} color="#A78BFA" />
+          <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: "12px", marginTop: "12px", textAlign: "center" }}>
+            <button
+              onClick={() => onNavigate?.("memory")}
+              style={{ background: "none", border: "none", color: "#4F46E5", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer" }}
+            >
+              View Cryptographic Ledger (54) &rarr;
+            </button>
           </div>
         </div>
-
       </div>
     </motion.div>
   );

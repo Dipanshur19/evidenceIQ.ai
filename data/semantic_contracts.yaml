@@ -194,6 +194,96 @@ metrics:
         visible_fields: ["*"]
         hidden_fields: []
 
+  "metric:nps":
+    display_name: "Customer Net Promoter Score (NPS)"
+    formula: "(Promoters - Detractors) / Total_Respondents * 100"
+    unit: "pts (-100 to +100)"
+    grain: "daily, per region"
+    allowed_dimensions: ["region"]
+    synonyms: ["nps", "net promoter score", "customer satisfaction", "csat"]
+    owner_team: "cx_team"
+    owner_role: "Chief Experience Officer (CXO)"
+    version: 1
+    priority_weight: 0.85
+    source_of_record: "cross_domain_kpis.csv"
+    refresh_cadence: "daily_at_midnight_utc"
+    typical_latency_hours: 2
+    minimum_baseline_days: 14
+    lineage:
+      - "qualtrics_feedback -> cx_analytics -> cross_domain_kpis.csv"
+    connected_kpis: ["metric:revenue", "metric:churn", "metric:ticket_rate"]
+    thresholds:
+      z_medium: 1.5
+      z_high: 2.5
+      business_impact_minimum_inr: 0
+    role_access:
+      executive:
+        visible_fields: ["display_name", "observed_value", "delta_pct"]
+        hidden_fields: ["z_score", "lineage"]
+      analyst:
+        visible_fields: ["*"]
+        hidden_fields: []
+
+  "metric:churn":
+    display_name: "Customer Churn Rate"
+    formula: "Lost_Customers / Total_Active_Customers * 100"
+    unit: "%"
+    grain: "daily, per region"
+    allowed_dimensions: ["region"]
+    synonyms: ["churn", "attrition", "customer churn", "drop-off"]
+    owner_team: "growth_team"
+    owner_role: "VP Retention & Lifecycle"
+    version: 1
+    priority_weight: 0.90
+    source_of_record: "cross_domain_kpis.csv"
+    refresh_cadence: "daily_at_midnight_utc"
+    typical_latency_hours: 4
+    minimum_baseline_days: 14
+    lineage:
+      - "crm_lifecycle -> subscription_pipeline -> cross_domain_kpis.csv"
+    connected_kpis: ["metric:revenue", "metric:nps"]
+    thresholds:
+      z_medium: 1.5
+      z_high: 2.5
+      business_impact_minimum_inr: 0
+    role_access:
+      executive:
+        visible_fields: ["display_name", "observed_value", "delta_pct"]
+        hidden_fields: ["z_score", "lineage"]
+      analyst:
+        visible_fields: ["*"]
+        hidden_fields: []
+
+  "metric:inventory_turnover":
+    display_name: "Inventory Turnover Ratio"
+    formula: "COGS / Average_Inventory_Value"
+    unit: "turns/month"
+    grain: "daily, per region"
+    allowed_dimensions: ["region"]
+    synonyms: ["inventory turnover", "stock turn", "inventory turns", "stock velocity"]
+    owner_team: "supply_chain"
+    owner_role: "VP Supply Chain & Operations"
+    version: 1
+    priority_weight: 0.75
+    source_of_record: "cross_domain_kpis.csv"
+    refresh_cadence: "daily_at_midnight_utc"
+    typical_latency_hours: 6
+    minimum_baseline_days: 14
+    lineage:
+      - "sap_erp -> wms_aggregations -> cross_domain_kpis.csv"
+    connected_kpis: ["metric:revenue"]
+    thresholds:
+      z_medium: 1.5
+      z_high: 2.5
+      business_impact_minimum_inr: 0
+    role_access:
+      executive:
+        visible_fields: ["display_name", "observed_value", "delta_pct"]
+        hidden_fields: ["z_score", "lineage"]
+      analyst:
+        visible_fields: ["*"]
+        hidden_fields: []
+
 # ---------------------------------------------------------------------------
 # Action Risk Table (Governs Recommendation Engine)
 # ---------------------------------------------------------------------------
